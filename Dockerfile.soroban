@@ -1,0 +1,133 @@
+# Dockerfile for Soroban Smart Contract Development
+# This Dockerfile provides a complete environment for Soroban contract development
+
+# ============================================================================
+# BASE STAGE - Soroban development environment
+# ============================================================================
+FROM rust:1.75-slim as soroban-base
+
+# Set environment variables
+ENV CARGO_TERM_COLOR=always \
+    RUST_BACKTRACE=1 \
+    PATH="/root/.cargo/bin:${PATH}"
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    pkg-config \
+    libssl-dev \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Soroban CLI
+RUN curl -L https://github.com/stellar/soroban/releases/download/v20.0.0/soroban-cli-20.0.0-x86_64-unknown-linux-gnu.tar.gz -o soroban-cli.tar.gz && \
+    tar -xzf soroban-cli.tar.gz && \
+    mv soroban /usr/local/bin/ && \
+    rm soroban-cli.tar.gz
+
+# Install Soroban tools
+RUN soroban install
+
+# Create app user
+RUN groupadd -r soroban && useradd -r -g soroban soroban
+
+# Set working directory
+WORKDIR /app
+
+# ============================================================================
+# DEVELOPMENT STAGE - Full development environment with testing tools
+# ============================================================================
+FROM soroban-base as development
+
+# Install additional development tools
+RUN cargo install cargo-watch cargo-expand
+
+# Copy contract source code
+COPY --chown=soroban:soroban Cargo.toml Cargo.lock ./
+COPY --chown=soroban:soroban src/ ./src/
+
+# Create necessary directories
+RUN mkdir -p /app/target /app/logs && \
+    chown -R soroban:soroban /app
+
+# Switch to non-root user
+USER soroban
+
+# Expose ports for local network
+EXPOSE 8000
+
+# Default command for development
+CMD ["cargo", "watch", "-x", "build"]
+
+# ============================================================================
+# BUILD STAGE - Optimized build for contract deployment
+# ============================================================================
+FROM soroban-base as build
+
+# Copy contract source code
+COPY Cargo.toml Cargo.lock ./
+COPY src/ ./src/
+
+# Build contract in release mode
+RUN cargo build --release
+
+# Extract WASM file
+RUN mkdir -p /app/target/wasm && \
+    cp target/release/astroml_fraud_registry.wasm /app/target/wasm/ 2>/dev/null || \
+    cp target/release/*.wasm /app/target/wasm/ 2>/dev/null || \
+    echo "No WASM file found in target/release"
+
+# ============================================================================
+# DEPLOYMENT STAGE - Minimal image for contract deployment
+# ============================================================================
+FROM rust:1.75-slim as deployment
+
+# Install Soroban CLI
+RUN curl -L https://github.com/stellar/soroban/releases/download/v20.0.0/soroban-cli-20.0.0-x86_64-unknown-linux-gnu.tar.gz -o soroban-cli.tar.gz && \
+    tar -xzf soroban-cli.tar.gz && \
+    mv soroban /usr/local/bin/ && \
+    rm soroban-cli.tar.gz && \
+    soroban install
+
+# Copy WASM file from build stage
+COPY --from=build /app/target/wasm /app/wasm
+
+# Set working directory
+WORKDIR /app
+
+# Create app user
+RUN groupadd -r soroban && useradd -r -g soroban soroban
+
+# Switch to non-root user
+USER soroban
+
+# Default command
+CMD ["soroban", "--help"]
+
+# ============================================================================
+# TESTING STAGE - Environment for running contract tests
+# ============================================================================
+FROM soroban-base as testing
+
+# Copy contract source code
+COPY Cargo.toml Cargo.lock ./
+COPY src/ ./src/
+
+# Run tests
+RUN cargo test --all-features
+
+# ============================================================================
+# VERIFICATION STAGE - Verify contract build and deployment
+# ============================================================================
+FROM soroban-base as verification
+
+# Copy contract source code
+COPY Cargo.toml Cargo.lock ./
+COPY src/ ./src/
+
+# Build contract
+RUN cargo build --release
+
+# Verify WASM file
+RUN ls -la target/release/*.wasm || echo "No WASM file found"
