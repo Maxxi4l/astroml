@@ -3,13 +3,25 @@
 This module is designed for backfills with millions of rows. It keeps work in
 Polars lazy expressions end-to-end so data can be streamed from source files to
 columnar output with low memory overhead.
+
+Idempotent backfill is ensured by tracking processed ledgers in the database.
 """
 from __future__ import annotations
 
 from pathlib import Path
 from typing import Iterable, Literal
+from datetime import datetime
 
 import polars as pl
+import logging
+
+from sqlalchemy import select, or_
+from sqlalchemy.orm import Session
+
+from astroml.db.session import get_session
+from astroml.db.schema import ProcessedLedger
+
+logger = logging.getLogger(__name__)
 
 BackfillFormat = Literal["parquet", "csv", "ndjson", "jsonl"]
 
@@ -150,8 +162,7 @@ def preprocess_ledger_backfill(frame: pl.LazyFrame) -> pl.LazyFrame:
         pl.when(raw_timestamp.is_null())
         .then(None)
         .otherwise(
-            raw_timestamp.cast(pl.String).str.to_datetime(strict=False, time_zone="UTC")
-        )
+            raw_timestamp.cast(pl.String).str.to_datetime(strict=False, time_zone="UTC"))
         .alias("timestamp")
     )
     transaction_hash = pl.coalesce(
@@ -204,12 +215,85 @@ def preprocess_to_parquet(
     input_path: str | Path,
     output_path: str | Path,
     input_format: BackfillFormat | None = None,
+    skip_processed: bool = True,
 ) -> Path:
-    """Read a backfill dataset, normalize it, and write Parquet output."""
-    frame = scan_backfill_dataset(input_path=input_path, input_format=input_format)
-    processed = preprocess_ledger_backfill(frame)
+    """Read a backfill dataset, normalize it, and write Parquet output.
 
-    out = Path(output_path)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    processed.sink_parquet(str(out), compression="zstd")
+    Idempotent: Skips ledgers that have already been processed.
+
+    Args:
+        input_path: File or directory containing backfill rows.
+        output_path: Path to write Parquet output.
+        input_format: Optional explicit format. If omitted, inferred from path.
+        skip_processed: Whether to skip already processed ledgers (idempotent behavior).
+    """
+    source_path_str = str(input_path)
+    frame = scan_backfill_dataset(input_path=input_path, input_format=input_format)
+    
+    # Get processed ledgers from DB to skip
+    if skip_processed:
+        with get_session() as session:
+            stmt = select(ProcessedLedger.ledger_sequence).where(
+                ProcessedLedger.status == "completed"
+            )
+            processed_sequences = {row[0] for row in session.execute(stmt)}
+        
+        if processed_sequences:
+            logger.info("Skipping %d already processed ledgers", len(processed_sequences))
+            frame = frame.filter(~pl.col("ledger_sequence").is_in(processed_sequences))
+    
+    processed = preprocess_ledger_backfill(frame)
+    
+    # Collect stats from processed data
+    stats_df = processed.group_by("ledger_sequence").agg(
+        pl.col("operation_id").count().alias("num_operations"),
+        pl.col("transaction_hash").n_unique().alias("num_transactions")
+    ).collect()
+    
+    # Update processed_ledgers in DB
+    if not stats_df.is_empty():
+        logger.info("Marking %d ledgers as processing", len(stats_df))
+        with get_session() as session:
+            # First, mark as processing
+            for row in stats_df.iter_rows(named=True):
+                ledger_seq = row["ledger_sequence"]
+                # Check if exists
+                existing = session.execute(
+                    select(ProcessedLedger).where(ProcessedLedger.ledger_sequence == ledger_seq)
+                ).scalar_one_or_none()
+                
+                if existing:
+                    existing.status = "processing"
+                    existing.processed_at = datetime.utcnow()
+                else:
+                    new_ledger = ProcessedLedger(
+                        ledger_sequence=ledger_seq,
+                        source=source_path_str,
+                        status="processing"
+                    )
+                    session.add(new_ledger)
+            session.commit()
+        
+        # Write data
+        out = Path(output_path)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        processed.sink_parquet(str(out), compression="zstd")
+        
+        # Mark as completed
+        logger.info("Marking %d ledgers as completed", len(stats_df))
+        with get_session() as session:
+            for row in stats_df.iter_rows(named=True):
+                ledger_seq = row["ledger_sequence"]
+                ledger_record = session.execute(
+                    select(ProcessedLedger).where(ProcessedLedger.ledger_sequence == ledger_seq)
+                ).scalar_one()
+                ledger_record.status = "completed"
+                ledger_record.num_operations = row["num_operations"]
+                ledger_record.num_transactions = row["num_transactions"]
+            session.commit()
+    else:
+        out = Path(output_path)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        processed.sink_parquet(str(out), compression="zstd")
+    
     return out
