@@ -391,3 +391,6 @@ mod test;
 
 #[cfg(test)]
 mod security_tests;
+
+#[cfg(test)]
+mod auth_tests;

@@ -82,3 +82,25 @@ export type FraudStats = {
   recentAlerts: FraudAlert[]
   riskOverTime: { date: string; score: number }[]
 }
+
+export type BlockchainTransaction = {
+  hash: string
+  ledgerSequence: number
+  sourceAccount: string
+  destinationAccount?: string
+  amount?: number
+  assetCode?: string
+  assetIssuer?: string
+  operationType: string
+  createdAt: string // ISO
+  fee: number
+  successful: boolean
+  memoType?: string
+}
+
+export type TransactionHistoryResponse = {
+  data: BlockchainTransaction[]
+  page: number
+  pageSize: number
+  total: number
+}
