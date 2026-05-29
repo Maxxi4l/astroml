@@ -375,19 +375,54 @@ class ModelBenchmark:
         return result
     
     def _save_results(self, result: BenchmarkResult):
-        """Save benchmark results to file."""
-        output_path = Path(self.config.output_dir) / f"{result.model_name}_benchmark.json"
+        """Save benchmark results and configuration to file for reproducibility.
         
-        # Create output directory if it doesn't exist
-        output_path.parent.mkdir(parents=True, exist_ok=True)
+        Saves:
+        - result.json: Benchmark results with all metrics
+        - config.json: Full configuration including random seed
+        - metadata.json: Metadata linking config and result
+        """
+        import time
+        from datetime import datetime
         
-        # Convert to dict for JSON serialization
+        output_dir = Path(self.config.output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Generate timestamp for unique run identification
+        timestamp = datetime.utcnow().isoformat()
+        run_id = f"{result.model_name}_{int(result.timestamp)}"
+        
+        # Save result
         result_dict = asdict(result)
+        result_path = output_dir / f"{run_id}_result.json"
+        with open(result_path, 'w') as f:
+            json.dump(result_dict, f, indent=2, default=str)
+        print(f"Results saved to {result_path}")
         
-        with open(output_path, 'w') as f:
-            json.dump(result_dict, f, indent=2)
+        # Save configuration for reproducibility
+        config_dict = asdict(self.config)
+        config_path = output_dir / f"{run_id}_config.json"
+        with open(config_path, 'w') as f:
+            json.dump(config_dict, f, indent=2, default=str)
+        print(f"Configuration saved to {config_path}")
         
-        print(f"Results saved to {output_path}")
+        # Save metadata linking config and result
+        metadata = {
+            "run_id": run_id,
+            "timestamp": timestamp,
+            "model_name": result.model_name,
+            "random_seed": result.random_seed,
+            "device": result.device,
+            "config_file": str(config_path),
+            "result_file": str(result_path),
+            "train_time_seconds": result.train_time,
+            "epochs_trained": result.epochs_trained,
+            "best_metrics": result.metrics,
+        }
+        metadata_path = output_dir / f"{run_id}_metadata.json"
+        with open(metadata_path, 'w') as f:
+            json.dump(metadata, f, indent=2)
+        print(f"Metadata saved to {metadata_path}")
     
     def _save_model(self):
         """Save trained model."""

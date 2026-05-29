@@ -9,16 +9,6 @@ from .ingestion.service import IngestionService
 from .ingestion.state import StateStore
 
 
-from __future__ import annotations
-
-import argparse
-import json
-from typing import Optional
-
-from .ingestion.service import IngestionService
-from .ingestion.state import StateStore
-
-
 def main(argv: Optional[list[str]] = None) -> int:
     parser = argparse.ArgumentParser(prog="astroml", description="AstroML utilities CLI")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -40,7 +30,34 @@ def main(argv: Optional[list[str]] = None) -> int:
         help="Print effective database configuration",
     )
 
-    args = parser.parse_args(argv)
+    quickstart = sub.add_parser(
+        "quickstart",
+        help="Run quick start: ingestion → graph → train pipeline with sample data",
+    )
+    quickstart.add_argument(
+        "--num-ledgers",
+        type=int,
+        default=100,
+        help="Number of sample ledgers to generate (default: 100)",
+    )
+    quickstart.add_argument(
+        "--num-accounts",
+        type=int,
+        default=50,
+        help="Number of sample accounts (default: 50)",
+    )
+    quickstart.add_argument(
+        "--epochs",
+        type=int,
+        default=10,
+        help="Training epochs (default: 10)",
+    )
+    quickstart.add_argument(
+        "--seed",
+        type=int,
+        default=42,
+        help="Random seed for reproducibility (default: 42)",
+    )
 
     preprocess = sub.add_parser(
         "preprocess-backfill",
@@ -116,8 +133,17 @@ def main(argv: Optional[list[str]] = None) -> int:
             config.print_help()
             return 1
 
-    parser.print_help()
-    return 1
+    if args.command == "quickstart":
+        from .quick_start import run_quickstart, QuickStartConfig
+        
+        # Update config with CLI arguments
+        QuickStartConfig.NUM_SAMPLE_LEDGERS = args.num_ledgers
+        QuickStartConfig.NUM_ACCOUNTS = args.num_accounts
+        QuickStartConfig.TRAIN_EPOCHS = args.epochs
+        QuickStartConfig.RANDOM_SEED = args.seed
+        
+        return run_quickstart()
+
     if args.command == "preprocess-backfill":
         from .preprocessing.ledger_backfill import preprocess_to_parquet
 
