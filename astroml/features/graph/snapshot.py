@@ -122,6 +122,7 @@ def iter_db_snapshots(
     t_now: Optional[datetime] = None,
     step: Optional[str] = None,
     session=None,
+    chunk_size: int = 100_000,
 ) -> Generator[SnapshotWindow, None, None]:
     """Yield discrete time-windowed graph snapshots from the database.
 
@@ -135,6 +136,9 @@ def iter_db_snapshots(
         step: Slide step between windows (defaults to ``window`` for non-overlapping).
               Set smaller than ``window`` for rolling windows.
         session: SQLAlchemy session. If None, one is created via ``get_session()``.
+        chunk_size: Number of rows to stream per fetch from the DB. Larger values
+            reduce round-trips but increase peak memory; smaller values keep the
+            working set bounded for long-window snapshots.
 
     Yields:
         :class:`SnapshotWindow` instances in chronological order.
@@ -148,6 +152,9 @@ def iter_db_snapshots(
 
     win_delta = _parse_window_size(window)
     step_delta = _parse_window_size(step) if step else win_delta
+
+    if chunk_size is None or chunk_size <= 0:
+        chunk_size = 100_000
 
     if t_now is None:
         t_now = datetime.now(timezone.utc)
@@ -171,7 +178,7 @@ def iter_db_snapshots(
     while window_start < t_now:
         window_end = min(window_start + win_delta, t_now)
 
-        rows = session.execute(
+        result = session.execute(
             select(
                 NormalizedTransaction.sender,
                 NormalizedTransaction.receiver,
@@ -182,16 +189,22 @@ def iter_db_snapshots(
                 NormalizedTransaction.receiver.isnot(None),
                 NormalizedTransaction.sender != NormalizedTransaction.receiver,
             ).order_by(NormalizedTransaction.timestamp)
-        ).all()
+        )
 
-        edges = [
-            Edge(src=r.sender, dst=r.receiver, timestamp=int(r.timestamp.timestamp()))
-            for r in rows
-        ]
+        edges: List[Edge] = []
         nodes: Set[str] = set()
-        for e in edges:
-            nodes.add(e.src)
-            nodes.add(e.dst)
+
+        # Stream rows in chunks to keep the working set bounded even for long
+        # windows. This avoids pulling the full result set into memory at once.
+        for row in result.yield_per(chunk_size):
+            edge = Edge(
+                src=row.sender,
+                dst=row.receiver,
+                timestamp=int(row.timestamp.timestamp()),
+            )
+            edges.append(edge)
+            nodes.add(edge.src)
+            nodes.add(edge.dst)
 
         yield SnapshotWindow(
             index=index,
