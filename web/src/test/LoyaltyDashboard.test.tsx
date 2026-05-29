@@ -21,6 +21,7 @@ test('renders dashboard sections', async () => {
   await waitFor(() => expect(screen.getByText(/Tier Benefits/i)).toBeInTheDocument())
   await waitFor(() => expect(screen.getByText(/Redeem Points/i)).toBeInTheDocument())
   await waitFor(() => expect(screen.getByText(/Tier Comparison/i)).toBeInTheDocument())
+  await waitFor(() => expect(screen.getByText(/Live Stellar Transactions/i)).toBeInTheDocument())
   await waitFor(() => expect(screen.getByText(/Fraud Detection/i)).toBeInTheDocument())
   await waitFor(() => expect(screen.getByText(/Points History/i)).toBeInTheDocument())
 })

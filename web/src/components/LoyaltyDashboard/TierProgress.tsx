@@ -24,7 +24,7 @@ export function TierProgress({ currentTier, nextTier }: { currentTier: LoyaltyTi
       <div style={{ width: 160, height: 160 }}>
         <ResponsiveContainer>
           <RadialBarChart innerRadius="70%" outerRadius="100%" data={data} startAngle={90} endAngle={-270}>
-            <RadialBar minAngle={15} dataKey="value" cornerRadius={6} />
+            <RadialBar dataKey="value" cornerRadius={6} />
             <Tooltip formatter={(v: any) => `${v}%`} />
           </RadialBarChart>
         </ResponsiveContainer>

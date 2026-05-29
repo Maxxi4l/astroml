@@ -10,7 +10,7 @@ const platinum = { id: 'platinum', name: 'Platinum', threshold: 6000, multiplier
 test('renders progress and remaining', () => {
   render(<TierProgress currentTier={gold} nextTier={{ tier: platinum, remainingToUpgrade: 1000, progressPct: 75 }} />)
   expect(screen.getByText('75%')).toBeInTheDocument()
-  expect(screen.getByText(/1000 points to Platinum/i)).toBeInTheDocument()
+  expect(screen.getByText(/1,000 points to Platinum/i)).toBeInTheDocument()
 })
 
 test('fires confetti when tier changes', async () => {

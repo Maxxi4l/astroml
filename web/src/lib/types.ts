@@ -57,6 +57,14 @@ export type TierComparisonDatum = {
   retention: number
 }
 
+export type StellarTransaction = {
+  id: string
+  timestamp: string // ISO
+  amount: number
+  sourceAccount: string
+  destinationAccount: string
+}
+
 export type FraudAlert = {
   id: string
   accountId: string

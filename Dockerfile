@@ -1,5 +1,6 @@
-# Multi-stage Dockerfile for AstroML
-# This Dockerfile creates optimized images for both ingestion and training environments
+# Multi-stage Dockerfile for AstroML with Feature Store
+# This Dockerfile creates optimized images for development, testing, and production
+# Includes comprehensive Feature Store implementation with caching and versioning
 
 # ============================================================================
 # BASE STAGE - Common dependencies and Python environment
@@ -10,7 +11,9 @@ FROM python:3.11-slim as base
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    ASTROML_ENV=container \
+    FEATURE_STORE_PATH=/app/feature_store
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -18,6 +21,10 @@ RUN apt-get update && apt-get install -y \
     curl \
     git \
     postgresql-client \
+    redis-tools \
+    netcat-openbsd \
+    jq \
+    wget \
     && rm -rf /var/lib/apt/lists/*
 
 # Create app user
@@ -32,7 +39,7 @@ RUN pip install --upgrade pip && \
     pip install -r requirements.txt
 
 # ============================================================================
-# INGESTION STAGE - Optimized for data ingestion and streaming
+# INGESTION STAGE - Optimized for data ingestion and streaming with Feature Store
 # ============================================================================
 FROM base as ingestion
 
@@ -45,9 +52,11 @@ RUN apt-get update && apt-get install -y \
 # Copy application code
 COPY --chown=astroml:astroml astroml/ ./astroml/
 COPY --chown=astroml:astroml migrations/ ./migrations/
+COPY --chown=astroml:astroml docs/ ./docs/
+COPY --chown=astroml:astroml examples/ ./examples/
 
 # Create necessary directories
-RUN mkdir -p /app/logs /app/data && \
+RUN mkdir -p /app/logs /app/data /app/feature_store && \
     chown -R astroml:astroml /app
 
 # Switch to non-root user
@@ -58,7 +67,7 @@ EXPOSE 8000 8080
 
 # Add health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import astroml.ingestion" || exit 1
+    CMD python -c "import astroml.ingestion; import astroml.features" || exit 1
 
 # Default command for ingestion
 CMD ["python", "-m", "astroml.ingestion"]
@@ -109,9 +118,11 @@ RUN pip install torch-geometric torch-scatter torch-sparse torch-cluster torch-s
 
 # Copy application code
 COPY --chown=astroml:astroml astroml/ ./astroml/
+COPY --chown=astroml:astroml docs/ ./docs/
+COPY --chown=astroml:astroml examples/ ./examples/
 
 # Create necessary directories
-RUN mkdir -p /app/models /app/data /app/logs && \
+RUN mkdir -p /app/models /app/data /app/logs /app/feature_store && \
     chown -R astroml:astroml /app
 
 # Switch to non-root user
@@ -122,7 +133,7 @@ EXPOSE 6006
 
 # Add health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import torch; import torch_geometric" || exit 1
+    CMD python -c "import torch; import torch_geometric; import astroml.features" || exit 1
 
 # Default command for training
 CMD ["python", "-m", "astroml.training.train_gcn"]
@@ -134,9 +145,11 @@ FROM base as training-cpu
 
 # Copy application code
 COPY --chown=astroml:astroml astroml/ ./astroml/
+COPY --chown=astroml:astroml docs/ ./docs/
+COPY --chown=astroml:astroml examples/ ./examples/
 
 # Create necessary directories
-RUN mkdir -p /app/models /app/data /app/logs && \
+RUN mkdir -p /app/models /app/data /app/logs /app/feature_store && \
     chown -R astroml:astroml /app
 
 # Switch to non-root user
@@ -147,7 +160,7 @@ EXPOSE 6006
 
 # Add health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import torch; import torch_geometric" || exit 1
+    CMD python -c "import torch; import torch_geometric; import astroml.features" || exit 1
 
 # Default command for training
 CMD ["python", "-m", "astroml.training.train_gcn"]
@@ -164,9 +177,11 @@ RUN pip install pytest pytest-asyncio pytest-cov black flake8 mypy jupyter
 COPY --chown=astroml:astroml astroml/ ./astroml/
 COPY --chown=astroml:astroml tests/ ./tests/
 COPY --chown=astroml:astroml migrations/ ./migrations/
+COPY --chown=astroml:astroml docs/ ./docs/
+COPY --chown=astroml:astroml examples/ ./examples/
 
 # Create necessary directories
-RUN mkdir -p /app/logs /app/data /app/notebooks && \
+RUN mkdir -p /app/logs /app/data /app/notebooks /app/feature_store && \
     chown -R astroml:astroml /app
 
 # Switch to non-root user
@@ -179,15 +194,43 @@ EXPOSE 8000 8080 8888 6006
 CMD ["python", "-m", "pytest", "tests/", "-v"]
 
 # ============================================================================
+# FEATURE STORE STAGE - Dedicated Feature Store service
+# ============================================================================
+FROM base as feature-store
+
+# Copy application code
+COPY --chown=astroml:astroml astroml/ ./astroml/
+COPY --chown=astroml:astroml docs/ ./docs/
+COPY --chown=astroml:astroml examples/ ./examples/
+
+# Create necessary directories
+RUN mkdir -p /app/logs /app/data /app/feature_store && \
+    chown -R astroml:astroml /app
+
+# Switch to non-root user
+USER astroml
+
+# Expose ports for Feature Store API
+EXPOSE 8000 8080
+
+# Add health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python -c "import astroml.features; from astroml.features import create_feature_store" || exit 1
+
+# Default command for Feature Store service
+CMD ["python", "-c", "from astroml.features import create_feature_store; store = create_feature_store('/app/feature_store'); print('Feature Store service ready')"]
+
+# ============================================================================
 # PRODUCTION STAGE - Minimal production image
 # ============================================================================
 FROM base as production
 
 # Copy only necessary files for production
 COPY --chown=astroml:astroml astroml/ ./astroml/
+COPY --chown=astroml:astroml docs/ ./docs/
 
 # Create necessary directories
-RUN mkdir -p /app/logs /app/data && \
+RUN mkdir -p /app/logs /app/data /app/feature_store && \
     chown -R astroml:astroml /app
 
 # Switch to non-root user
@@ -195,7 +238,7 @@ USER astroml
 
 # Add health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import astroml" || exit 1
+    CMD python -c "import astroml; import astroml.features" || exit 1
 
 # Default production command (can be overridden)
 CMD ["python", "-m", "astroml.ingestion"]
