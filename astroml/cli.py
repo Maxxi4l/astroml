@@ -4,6 +4,17 @@ import argparse
 import json
 from typing import Optional
 
+from .db.session import load_database_config
+from .ingestion.service import IngestionService
+from .ingestion.state import StateStore
+
+
+from __future__ import annotations
+
+import argparse
+import json
+from typing import Optional
+
 from .ingestion.service import IngestionService
 from .ingestion.state import StateStore
 
@@ -21,6 +32,15 @@ def main(argv: Optional[list[str]] = None) -> int:
         default=None,
         help="Path to state file (defaults to ./.astroml_state/ingestion_state.json)",
     )
+
+    config = sub.add_parser("config", help="Configuration management")
+    config.add_argument(
+        "--print-db",
+        action="store_true",
+        help="Print effective database configuration",
+    )
+
+    args = parser.parse_args(argv)
 
     preprocess = sub.add_parser(
         "preprocess-backfill",
@@ -72,6 +92,32 @@ def main(argv: Optional[list[str]] = None) -> int:
         }, indent=2))
         return 0
 
+    if args.command == "config":
+        if args.print_db:
+            try:
+                db_config = load_database_config()
+                print("Effective database configuration:")
+                print(json.dumps({
+                    "host": db_config.host,
+                    "port": db_config.port,
+                    "name": db_config.name,
+                    "user": db_config.user,
+                    "password": "***" if db_config.password else "",
+                    "url": db_config.to_url()
+                }, indent=2))
+                return 0
+            except FileNotFoundError as e:
+                print(f"Error: {e}")
+                return 1
+            except Exception as e:
+                print(f"Error loading config: {e}")
+                return 1
+        else:
+            config.print_help()
+            return 1
+
+    parser.print_help()
+    return 1
     if args.command == "preprocess-backfill":
         from .preprocessing.ledger_backfill import preprocess_to_parquet
 
