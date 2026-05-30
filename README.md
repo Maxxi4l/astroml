@@ -320,11 +320,13 @@ pip install -r requirements.txt
 
 ### 3. Configure database
 
-Create a PostgreSQL database and update:
+A lightweight Docker Compose setup is provided to spin up PostgreSQL and Redis with persistent volumes. Simply run:
 
+```bash
+docker compose up -d
 ```
-config/database.yaml
-```
+
+This starts only the database and cache, letting you run Python scripts and training natively on your machine. Alternatively, you can configure your own database and update `config/database.yaml`.
 
 ---
 

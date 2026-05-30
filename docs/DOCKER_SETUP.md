@@ -56,12 +56,35 @@ cp .env.example .env
 chmod +x scripts/docker-dev.sh
 ```
 
-### 2. Start Development Environment
+### 2. Lightweight Local Database Stack (Recommended)
+
+If you prefer to run and debug your application code (Python files, Jupyter notebook, PyTorch GNNs, etc.) natively on your host machine while using containerized databases, AstroML provides a lightweight Docker Compose override:
+
+```bash
+# Start ONLY PostgreSQL and Redis with persistent volumes
+docker compose up -d
+```
+
+With the included `docker-compose.override.yml`, this spins up only the database and cache containers with persistent storage and exposes their ports (5432 and 6379) to your host system.
+
+Now, you can start developing using your local virtual environment:
+```bash
+# Run migrations to initialize the database schema
+alembic upgrade head
+
+# Run scripts natively on your machine
+python examples/quick_start.py
+```
+
+### 3. Full Containerized Development Environment (Alternative)
+
+If you prefer to run everything inside Docker containers (including Jupyter Lab and TensorBoard):
+
 ```bash
 # Build Docker images
 ./scripts/docker-dev.sh build
 
-# Start development environment
+# Start the full development container environment
 ./scripts/docker-dev.sh dev
 ```
 

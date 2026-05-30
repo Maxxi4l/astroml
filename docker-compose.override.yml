@@ -1,0 +1,41 @@
+version: '3.8'
+
+# ==============================================================================
+# AstroML Docker Compose Override for Local Development
+# ==============================================================================
+# This file is automatically loaded by Docker Compose (when running in the same
+# directory as docker-compose.yml). It is optimized for host-based development:
+#
+# Running:
+#   docker compose up -d
+#
+# will ONLY start the essential data services (PostgreSQL and Redis) with their 
+# persistent volumes. You can then run your Python files or training scripts 
+# natively on your host machine while using containerized infrastructure.
+#
+# If you want to start the full stack including ingestion, streaming, etc., use:
+#   docker compose --profile full up -d
+# ==============================================================================
+
+services:
+  # Move the ingestion service into non-default profiles so it does not start by default.
+  ingestion:
+    profiles:
+      - ingestion
+      - full
+
+  # Move the streaming service into non-default profiles so it does not start by default.
+  streaming:
+    profiles:
+      - streaming
+      - full
+
+  # PostgreSQL database configuration remains available on port 5432
+  postgres:
+    ports:
+      - "5432:5432"
+
+  # Redis caching & queues configuration remains available on port 6379
+  redis:
+    ports:
+      - "6379:6379"
