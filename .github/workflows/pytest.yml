@@ -44,6 +44,8 @@ jobs:
         elif [ -f requirements.txt ]; then
           pip install -r requirements.txt
         fi
+        # Install the package itself so `import astroml` resolves in tests.
+        pip install -e . --no-deps
 
     - name: Run pytest (CPU)
       if: matrix.flavor == 'cpu'
