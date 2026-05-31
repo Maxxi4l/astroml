@@ -312,7 +312,7 @@ def _configure_logging() -> None:
 
 def _parse_cli_args() -> StreamConfig:
     """Parse command-line arguments into a StreamConfig."""
-    import argparse
+    import argparse  # noqa: E402
 
     parser = argparse.ArgumentParser(
         description="Stream Stellar blockchain data from Horizon into PostgreSQL.",

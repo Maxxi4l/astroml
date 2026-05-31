@@ -121,8 +121,8 @@ class StellarLedgerDownloader:
 
 async def main():
     """Simple CLI for the downloader."""
-    import argparse
-    import sys
+    import argparse  # noqa: E402
+    import sys  # noqa: E402
 
     parser = argparse.ArgumentParser(description="Stellar Ledger Downloader")
     parser.add_argument("--start", type=int, required=True, help="Start ledger sequence")

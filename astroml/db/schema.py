@@ -19,7 +19,7 @@ composite indexes on both transactions and operations.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 
 from sqlalchemy import (
     BigInteger,

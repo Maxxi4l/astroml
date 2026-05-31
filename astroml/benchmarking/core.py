@@ -291,7 +291,7 @@ class ModelBenchmark:
                 # Get probabilities for AUC
                 probs = torch.softmax(out, dim=1)[:, 1][data['test_mask']]
                 metrics["auc"] = roc_auc_score(y_true.cpu(), probs.cpu())
-            except:
+            except Exception:
                 metrics["auc"] = 0.0
         
         return metrics

@@ -175,8 +175,8 @@ def compute_model_size(model: torch.nn.Module) -> Dict[str, int]:
 
 def set_random_seed(seed: int) -> None:
     """Set random seeds for reproducibility."""
-    import random
-    import numpy as np
+    import random  # noqa: E402
+    import numpy as np  # noqa: E402
     
     random.seed(seed)
     np.random.seed(seed)

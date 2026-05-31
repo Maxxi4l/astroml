@@ -42,8 +42,8 @@ def test_gat_multihead_shapes_and_attention_sum():
 
 
 def test_gat_export_attention():
-    import torch
-    from astroml.features.gnn.attention import GATConv
+    import torch  # noqa: E402
+    from astroml.features.gnn.attention import GATConv  # noqa: E402
 
     edge_index = torch.tensor([[0, 2, 1], [1, 1, 2]], dtype=torch.long)
     x = torch.randn(3, 4)
