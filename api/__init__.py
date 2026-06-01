@@ -1,1 +1,1 @@
-# AstroML REST API package
+"""API package init."""
