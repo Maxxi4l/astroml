@@ -24,11 +24,22 @@ from hydra.utils import instantiate, get_original_cwd
 
 from astroml.models.gcn import GCN
 from astroml.tracking import MLflowTracker
+from astroml.training.config import TrainingConfig, validate_training_config_data
 from astroml.training.temporal_split import TemporalSplitter
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+def validate_training_config(cfg: DictConfig) -> TrainingConfig:
+    """Validate cfg.training against the typed Pydantic schema.
+
+    Raises:
+        ValueError: If training config is invalid.
+    """
+    training_data = OmegaConf.to_container(cfg.training, resolve=True)
+    return validate_training_config_data(training_data)
 
 
 def set_device(device_config: str) -> torch.device:
@@ -348,6 +359,9 @@ def _parse_command_line_seed() -> None:
 @hydra.main(version_base=None, config_path="configs", config_name="config")
 def _hydra_main(cfg: DictConfig) -> None:
     """Hydra entry point after CLI preprocessing."""
+    typed_training_cfg = validate_training_config(cfg)
+    cfg.training = OmegaConf.create(typed_training_cfg.model_dump())
+
     # Create save directory
     save_dir = Path(cfg.experiment.save_dir)
     save_dir.mkdir(parents=True, exist_ok=True)
