@@ -9,7 +9,7 @@ Idempotent backfill is ensured by tracking processed ledgers in the database.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Iterable, Literal
+from typing import Iterable, Literal, Optional
 from datetime import datetime
 
 import polars as pl

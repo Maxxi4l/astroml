@@ -193,7 +193,6 @@ class TestInsecureDeserialization:
 
         class _Exploit:
             def __reduce__(self):
-                import os  # noqa: PLC0415
                 return (os.system, ("echo PICKLE_RCE_EXECUTED",))
 
         payload = pickle.dumps(_Exploit())
@@ -676,12 +675,15 @@ class TestYamlSafeLoad:
         pathlib.Path("scripts"),
         pathlib.Path("config"),
         pathlib.Path("configs"),
+        pathlib.Path("migrations"),
     ]
 
     _SAFE_LOADERS = frozenset({"SafeLoader", "BaseLoader"})
 
     def _python_files(self) -> list[pathlib.Path]:
         files: list[pathlib.Path] = []
+        # Root-level .py files (non-recursive so we don't double-scan sub-packages)
+        files.extend(pathlib.Path(".").glob("*.py"))
         for d in self._SOURCE_DIRS:
             if d.exists():
                 files.extend(d.rglob("*.py"))

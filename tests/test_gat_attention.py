@@ -16,7 +16,6 @@ pytestmark = pytest.mark.skipif(not TORCH_AVAILABLE, reason="PyTorch not install
 
 
 def test_gat_multihead_shapes_and_attention_sum():
-    import torch
     from astroml.features.gnn.attention import GATConv
 
     # Simple 3-node graph with edges: 0->1, 2->1, 1->2
@@ -42,7 +41,6 @@ def test_gat_multihead_shapes_and_attention_sum():
 
 
 def test_gat_export_attention():
-    import torch  # noqa: E402
     from astroml.features.gnn.attention import GATConv  # noqa: E402
 
     edge_index = torch.tensor([[0, 2, 1], [1, 1, 2]], dtype=torch.long)

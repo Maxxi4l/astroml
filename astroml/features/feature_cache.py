@@ -14,7 +14,7 @@ import sqlite3
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union, Tuple, Set
+from typing import Any, Callable, Dict, List, Optional, Union, Tuple, Set
 from enum import Enum
 import threading
 import time
