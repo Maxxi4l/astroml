@@ -83,14 +83,15 @@ def snapshot_last_n_days(
     - days: configurable window size in days (>=1)
     - now_ts: anchor timestamp (epoch seconds)
 
-    The start bound is computed as now_ts - days*86400 + 1 to ensure the window
-    covers exactly N calendar days worth of seconds if treating bounds as inclusive.
-    Example: days=1 -> [now_ts-86399, now_ts].
+    The window uses inclusive bounds on both sides: [start_ts, now_ts].
+    The start bound is therefore computed as now_ts - days*86400 so events that
+    land exactly on the cutoff are included.
+    Example: days=1 -> [now_ts-86400, now_ts].
     """
     if days <= 0:
         raise ValueError("days must be >= 1")
     seconds = days * 86400
-    start_ts = now_ts - seconds + 1
+    start_ts = now_ts - seconds
     if start_ts < 0:
         start_ts = 0
     return window_snapshot(edges, start_ts, now_ts, presorted=presorted)
