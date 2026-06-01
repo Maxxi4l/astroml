@@ -1,0 +1,145 @@
+"""Transaction History API (issue #253).
+
+Endpoints
+---------
+GET /api/v1/transactions        — List transactions with rich filtering
+GET /api/v1/transactions/stats  — Aggregated stats (volume, count by asset)
+GET /api/v1/transactions/{hash} — Single transaction by hash
+
+Query params for list endpoint:
+  source_account, destination_account, asset_code, start_date, end_date,
+  min_amount, max_amount, operation_type, successful, page, page_size
+"""
+from __future__ import annotations
+
+from datetime import datetime
+from typing import Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from api.database import get_db
+from api.models.orm import Transaction
+
+router = APIRouter(prefix="/api/v1/transactions", tags=["transactions"])
+
+
+# ─── Schemas ─────────────────────────────────────────────────────────────────
+
+class TransactionOut(BaseModel):
+    hash: str
+    ledger_sequence: int
+    source_account: str
+    destination_account: Optional[str]
+    amount: Optional[float]
+    asset_code: Optional[str]
+    asset_issuer: Optional[str]
+    fee: int
+    operation_type: Optional[str]
+    successful: bool
+    memo_type: Optional[str]
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class TransactionHistoryResponse(BaseModel):
+    data: list[TransactionOut]
+    page: int
+    page_size: int
+    total: int
+
+
+class TransactionStats(BaseModel):
+    total_count: int
+    total_volume: float
+    count_by_asset: dict[str, int]
+    successful_count: int
+    failed_count: int
+
+
+# ─── Routes ──────────────────────────────────────────────────────────────────
+
+@router.get("/stats", response_model=TransactionStats)
+async def transaction_stats(db: AsyncSession = Depends(get_db)):
+    """Aggregated transaction statistics."""
+    total_count = (await db.execute(select(func.count()).select_from(Transaction))).scalar_one()
+    total_volume = (await db.execute(
+        select(func.coalesce(func.sum(Transaction.amount), 0))
+    )).scalar_one()
+    successful_count = (await db.execute(
+        select(func.count()).where(Transaction.successful.is_(True))
+    )).scalar_one()
+
+    rows = (await db.execute(
+        select(Transaction.asset_code, func.count())
+        .group_by(Transaction.asset_code)
+    )).all()
+    count_by_asset = {(r[0] or "native"): r[1] for r in rows}
+
+    return TransactionStats(
+        total_count=total_count,
+        total_volume=float(total_volume),
+        count_by_asset=count_by_asset,
+        successful_count=successful_count,
+        failed_count=total_count - successful_count,
+    )
+
+
+@router.get("/{hash}", response_model=TransactionOut)
+async def get_transaction(hash: str, db: AsyncSession = Depends(get_db)):
+    """Fetch a single transaction by hash."""
+    result = await db.execute(select(Transaction).where(Transaction.hash == hash))
+    tx = result.scalar_one_or_none()
+    if tx is None:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    return tx
+
+
+@router.get("", response_model=TransactionHistoryResponse)
+async def list_transactions(
+    source_account: Optional[str] = Query(None),
+    destination_account: Optional[str] = Query(None),
+    asset_code: Optional[str] = Query(None),
+    start_date: Optional[datetime] = Query(None),
+    end_date: Optional[datetime] = Query(None),
+    min_amount: Optional[float] = Query(None),
+    max_amount: Optional[float] = Query(None),
+    operation_type: Optional[str] = Query(None),
+    successful: Optional[bool] = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=500),
+    db: AsyncSession = Depends(get_db),
+):
+    """List transactions with optional compound filtering."""
+    q = select(Transaction)
+
+    if source_account:
+        q = q.where(Transaction.source_account == source_account)
+    if destination_account:
+        q = q.where(Transaction.destination_account == destination_account)
+    if asset_code:
+        q = q.where(Transaction.asset_code == asset_code)
+    if start_date:
+        q = q.where(Transaction.created_at >= start_date)
+    if end_date:
+        q = q.where(Transaction.created_at <= end_date)
+    if min_amount is not None:
+        q = q.where(Transaction.amount >= min_amount)
+    if max_amount is not None:
+        q = q.where(Transaction.amount <= max_amount)
+    if operation_type:
+        q = q.where(Transaction.operation_type == operation_type)
+    if successful is not None:
+        q = q.where(Transaction.successful.is_(successful))
+
+    count_q = select(func.count()).select_from(q.subquery())
+    total = (await db.execute(count_q)).scalar_one()
+
+    q = q.order_by(Transaction.created_at.desc())
+    q = q.offset((page - 1) * page_size).limit(page_size)
+    rows = (await db.execute(q)).scalars().all()
+
+    return TransactionHistoryResponse(data=rows, page=page, page_size=page_size, total=total)
