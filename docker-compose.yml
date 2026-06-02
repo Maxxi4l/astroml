@@ -42,6 +42,39 @@ services:
     restart: unless-stopped
     command: redis-server --appendonly yes
 
+  # FastAPI REST API Service
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    container_name: astroml-api
+    environment:
+      - DATABASE_URL=postgresql://astroml:astroml_password@postgres:5432/astroml
+      - REDIS_URL=redis://redis:6379/0
+      - LOG_LEVEL=INFO
+      - ASTROML_ENV=container
+      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-dev-jwt-secret-key-change-in-production}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./config:/app/config:ro
+      - api_logs:/app/logs
+    networks:
+      - astroml-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
   # Feature Store Service
   feature-store:
     build:
@@ -421,4 +454,6 @@ volumes:
   soroban_wasm:
     driver: local
   soroban_logs:
+    driver: local
+  api_logs:
     driver: local

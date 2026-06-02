@@ -1,18 +1,11 @@
 """AstroML REST API — main FastAPI application.
 
 Wires together all routers:
+  - /api/v1/transactions (Issue #248)
   - /api/v1/fraud/*       (Issue #254)
-  - /api/v1/accounts/*    (Issue #252)
+  - /api/v1/accounts/*    (Issue #247)
   - /api/v1/monitoring/*  (Issue #256)
   - /api/v1/loyalty/*     (Issue #255)
-
-Usage:
-"""AstroML REST API application.
-
-Mounts all routers:
-  - /api/v1/transactions  (issue #253)
-  - /api/v1/fraud         (issue #249)
-  - /api/v1/models        (issue #257)
 
 Usage
 -----
@@ -27,7 +20,7 @@ from typing import AsyncGenerator
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.routers import accounts_router, fraud_router, loyalty_router, monitoring_router
+from api.routers import accounts_router, fraud_router, loyalty_router, monitoring_router, transactions_router
 from api.routers.monitoring import record_latency
 
 
@@ -81,6 +74,7 @@ async def _latency_middleware(request: Request, call_next):
 
 
 # ─── Routers ─────────────────────────────────────────────────────────────────
+app.include_router(transactions_router)
 app.include_router(fraud_router)
 app.include_router(accounts_router)
 app.include_router(monitoring_router)

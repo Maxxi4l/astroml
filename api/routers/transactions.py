@@ -30,25 +30,43 @@ router = APIRouter(prefix="/api/v1/transactions", tags=["transactions"])
 
 class TransactionOut(BaseModel):
     hash: str
-    ledger_sequence: int
-    source_account: str
-    destination_account: Optional[str]
-    amount: Optional[float]
-    asset_code: Optional[str]
-    asset_issuer: Optional[str]
+    ledgerSequence: int
+    sourceAccount: str
+    destinationAccount: Optional[str] = None
+    amount: Optional[float] = None
+    assetCode: Optional[str] = None
+    assetIssuer: Optional[str] = None
     fee: int
-    operation_type: Optional[str]
+    operationType: Optional[str] = None
     successful: bool
-    memo_type: Optional[str]
-    created_at: datetime
+    memoType: Optional[str] = None
+    createdAt: datetime
 
-    model_config = {"from_attributes": True}
+    model_config = {"from_attributes": True, "populate_by_name": True}
+
+    @classmethod
+    def from_orm(cls, obj):
+        """Convert from ORM model with snake_case to camelCase."""
+        return cls(
+            hash=obj.hash,
+            ledgerSequence=obj.ledger_sequence,
+            sourceAccount=obj.source_account,
+            destinationAccount=obj.destination_account,
+            amount=float(obj.amount) if obj.amount is not None else None,
+            assetCode=obj.asset_code,
+            assetIssuer=obj.asset_issuer,
+            fee=obj.fee,
+            operationType=obj.operation_type,
+            successful=obj.successful,
+            memoType=obj.memo_type,
+            createdAt=obj.created_at,
+        )
 
 
 class TransactionHistoryResponse(BaseModel):
     data: list[TransactionOut]
     page: int
-    page_size: int
+    pageSize: int
     total: int
 
 
@@ -95,7 +113,7 @@ async def get_transaction(hash: str, db: AsyncSession = Depends(get_db)):
     tx = result.scalar_one_or_none()
     if tx is None:
         raise HTTPException(status_code=404, detail="Transaction not found")
-    return tx
+    return TransactionOut.from_orm(tx)
 
 
 @router.get("", response_model=TransactionHistoryResponse)
@@ -142,4 +160,9 @@ async def list_transactions(
     q = q.offset((page - 1) * page_size).limit(page_size)
     rows = (await db.execute(q)).scalars().all()
 
-    return TransactionHistoryResponse(data=rows, page=page, page_size=page_size, total=total)
+    return TransactionHistoryResponse(
+        data=[TransactionOut.from_orm(row) for row in rows],
+        page=page,
+        pageSize=page_size,
+        total=total,
+    )

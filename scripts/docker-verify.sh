@@ -133,6 +133,43 @@ test_core_services() {
     fi
 }
 
+# Function to test API service
+test_api_service() {
+    print_header "Testing API Service"
+    
+    # Start API service
+    print_status "Starting API service..."
+    $COMPOSE_CMD up -d api
+    
+    # Wait for API to start
+    print_status "Waiting for API service to start..."
+    sleep 25
+    
+    # Test API health endpoint
+    print_status "Testing API health endpoint..."
+    if curl -s http://localhost:8000/health | grep -q "ok"; then
+        print_status "✓ API health endpoint is responding"
+    else
+        print_error "✗ API health endpoint failed"
+    fi
+    
+    # Test API transactions endpoint
+    print_status "Testing API transactions endpoint..."
+    if curl -s http://localhost:8000/api/v1/transactions/stats | grep -q "total_count"; then
+        print_status "✓ API transactions endpoint is responding"
+    else
+        print_warning "✗ API transactions endpoint not responding (may need database data)"
+    fi
+    
+    # Test API accounts endpoint
+    print_status "Testing API accounts endpoint..."
+    if curl -s http://localhost:8000/api/v1/accounts | grep -q "total"; then
+        print_status "✓ API accounts endpoint is responding"
+    else
+        print_warning "✗ API accounts endpoint not responding (may need database data)"
+    fi
+}
+
 # Function to test Feature Store
 test_feature_store() {
     print_header "Testing Feature Store"
@@ -247,7 +284,7 @@ test_ports() {
     print_header "Testing Port Accessibility"
     
     local ports=(
-        "8000:Feature Store"
+        "8000:API Service"
         "8001:Ingestion"
         "8002:Streaming"
         "8003:Development"
@@ -276,6 +313,7 @@ test_logs() {
     local services=(
         "postgres"
         "redis"
+        "api"
         "feature-store"
         "dev"
     )
@@ -309,6 +347,7 @@ generate_report() {
     echo "Services Tested:"
     echo "- PostgreSQL Database"
     echo "- Redis Cache"
+    echo "- API Service"
     echo "- Feature Store"
     echo "- Development Environment"
     echo "- Python Environment"
@@ -320,8 +359,10 @@ generate_report() {
     echo "Next Steps:"
     echo "1. Start development: ./scripts/docker-dev.sh dev"
     echo "2. Access Jupyter Lab: http://localhost:8888"
-    echo "3. Run Feature Store example: docker-compose exec dev python examples/feature_store_example.py"
-    echo "4. Run tests: ./scripts/docker-dev.sh test"
+    echo "3. Access API: http://localhost:8000"
+    echo "4. Access API docs: http://localhost:8000/docs"
+    echo "5. Run Feature Store example: docker-compose exec dev python examples/feature_store_example.py"
+    echo "6. Run tests: ./scripts/docker-dev.sh test"
 }
 
 # Main execution
@@ -339,6 +380,7 @@ main() {
     verify_images
     verify_volumes
     test_core_services || ((failed_steps++))
+    test_api_service || ((failed_steps++))
     test_feature_store || ((failed_steps++))
     test_development || ((failed_steps++))
     run_tests || ((failed_steps++))

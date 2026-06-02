@@ -1,74 +1,129 @@
 import type { BlockchainTransaction, TransactionHistoryResponse } from '../lib/types'
+import { get } from './client'
+import { ApiError } from './client'
 
-// Mock transaction data for demonstration
-const mockTransactions: BlockchainTransaction[] = Array.from({ length: 250 }).map((_, i) => {
-  const operationTypes = ['payment', 'create_account', 'change_trust', 'path_payment', 'manage_buy_offer']
-  const assetCodes = ['XLM', 'USDC', 'EURC', 'BTC', 'ETH']
-  const baseTime = Date.now() - i * 3600000 // One hour apart
-  
-  return {
-    hash: `tx_${'a'.repeat(56)}${i.toString().padStart(8, '0')}`,
-    ledgerSequence: 50000 + i,
-    sourceAccount: `G${'A'.repeat(28)}${'B'.repeat(27)}`,
-    destinationAccount: i % 3 === 0 ? undefined : `G${'C'.repeat(28)}${'D'.repeat(27)}`,
-    amount: i % 4 === 0 ? undefined : Math.floor(Math.random() * 10000) + 100,
-    assetCode: assetCodes[i % assetCodes.length],
-    assetIssuer: i % 2 === 0 ? undefined : `G${'E'.repeat(28)}${'F'.repeat(27)}`,
-    operationType: operationTypes[i % operationTypes.length],
-    createdAt: new Date(baseTime).toISOString(),
-    fee: 100 + (i % 5) * 50,
-    successful: i % 10 !== 0, // 10% failure rate
-    memoType: i % 7 === 0 ? 'text' : undefined,
-  }
-})
-
+/**
+ * Get transaction history with optional filters
+ */
 export async function getTransactionHistory(
   page: number,
   pageSize: number,
   filters?: {
     sourceAccount?: string
-    operationType?: string
+    destinationAccount?: string
+    assetCode?: string
     startDate?: string
     endDate?: string
+    minAmount?: number
+    maxAmount?: number
+    operationType?: string
+    successful?: boolean
   }
 ): Promise<TransactionHistoryResponse> {
-  // Simulate API delay
-  await new Promise((resolve) => setTimeout(resolve, 300))
-  
-  let filtered = [...mockTransactions]
-  
-  // Apply filters if provided
+  const params = new URLSearchParams({
+    page: page.toString(),
+    page_size: pageSize.toString(),
+  })
+
   if (filters?.sourceAccount) {
-    filtered = filtered.filter((tx) => 
-      tx.sourceAccount.toLowerCase().includes(filters.sourceAccount!.toLowerCase())
-    )
+    params.append('source_account', filters.sourceAccount)
   }
-  
-  if (filters?.operationType) {
-    filtered = filtered.filter((tx) => tx.operationType === filters.operationType)
+  if (filters?.destinationAccount) {
+    params.append('destination_account', filters.destinationAccount)
   }
-  
+  if (filters?.assetCode) {
+    params.append('asset_code', filters.assetCode)
+  }
   if (filters?.startDate) {
-    filtered = filtered.filter((tx) => new Date(tx.createdAt) >= new Date(filters.startDate!))
+    params.append('start_date', filters.startDate)
   }
-  
   if (filters?.endDate) {
-    filtered = filtered.filter((tx) => new Date(tx.createdAt) <= new Date(filters.endDate!))
+    params.append('end_date', filters.endDate)
   }
-  
-  const start = page * pageSize
-  const end = start + pageSize
-  const data = filtered.slice(start, end)
-  
+  if (filters?.minAmount !== undefined) {
+    params.append('min_amount', filters.minAmount.toString())
+  }
+  if (filters?.maxAmount !== undefined) {
+    params.append('max_amount', filters.maxAmount.toString())
+  }
+  if (filters?.operationType) {
+    params.append('operation_type', filters.operationType)
+  }
+  if (filters?.successful !== undefined) {
+    params.append('successful', filters.successful.toString())
+  }
+
+  const response = await get<any>(`/api/v1/transactions?${params.toString()}`)
+
+  const data = response.data.map((tx: any) => ({
+    hash: tx.hash,
+    ledgerSequence: tx.ledgerSequence,
+    sourceAccount: tx.sourceAccount,
+    destinationAccount: tx.destinationAccount,
+    amount: tx.amount,
+    assetCode: tx.assetCode,
+    assetIssuer: tx.assetIssuer,
+    operationType: tx.operationType,
+    createdAt: tx.createdAt,
+    fee: tx.fee,
+    successful: tx.successful,
+    memoType: tx.memoType,
+  }))
+
   return {
     data,
-    page,
-    pageSize,
-    total: filtered.length,
+    page: response.page,
+    pageSize: response.pageSize,
+    total: response.total,
   }
 }
 
+/**
+ * Get a single transaction by hash
+ */
 export async function getTransactionByHash(hash: string): Promise<BlockchainTransaction | null> {
-  await new Promise((resolve) => setTimeout(resolve, 200))
-  return mockTransactions.find((tx) => tx.hash === hash) || null
+  try {
+    const response = await get<any>(`/api/v1/transactions/${hash}`)
+
+    return {
+      hash: response.hash,
+      ledgerSequence: response.ledgerSequence,
+      sourceAccount: response.sourceAccount,
+      destinationAccount: response.destinationAccount,
+      amount: response.amount,
+      assetCode: response.assetCode,
+      assetIssuer: response.assetIssuer,
+      operationType: response.operationType,
+      createdAt: response.createdAt,
+      fee: response.fee,
+      successful: response.successful,
+      memoType: response.memoType,
+    }
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      return null
+    }
+    throw error
+  }
+}
+
+/**
+ * Get transaction statistics
+ */
+export async function getTransactionStats(): Promise<{
+  totalCount: number
+  totalVolume: number
+  countByAsset: Record<string, number>
+  successfulCount: number
+  failedCount: number
+}> {
+  const response = await get<any>('/api/v1/transactions/stats')
+
+  return {
+    totalCount: response.total_count,
+    totalVolume: response.total_volume,
+    countByAsset: response.count_by_asset,
+    successfulCount: response.successful_count,
+    failedCount: response.failed_count,
+  }
 }
