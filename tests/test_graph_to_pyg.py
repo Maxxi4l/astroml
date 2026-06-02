@@ -59,7 +59,37 @@ class TestGraphToPyG:
         # Check labels
         assert data.y is not None
         assert data.y.shape[0] == 3  # num_nodes
-    
+
+    def test_conversion_with_numpy_edge_features_and_node_labels(self):
+        """Test conversion with numpy arrays for edge features and labels."""
+        node_features = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float64)
+        edge_index = np.array([[0, 1], [1, 0]], dtype=np.int32)
+        edge_features = np.array([[0.5], [0.6]], dtype=np.float64)
+        node_labels = np.array([0, 1], dtype=np.int64)
+
+        data = graph_to_pyg_data(node_features, edge_index, edge_features, node_labels)
+
+        assert data.edge_attr.dtype == torch.float32
+        assert data.y.dtype == torch.int64
+        assert data.y.shape == (2,)
+
+    def test_invalid_edge_index_negative_id(self):
+        """Test error handling for negative edge index values."""
+        node_features = [[1.0, 2.0], [3.0, 4.0]]
+        edge_index = [[0, -1], [1, 0]]
+
+        with pytest.raises(ValueError, match="Edge index contains negative node IDs"):
+            graph_to_pyg_data(node_features, edge_index)
+
+    def test_invalid_node_labels_2d_shape(self):
+        """Test error handling for node labels with incorrect dimensionality."""
+        node_features = [[1.0, 2.0], [3.0, 4.0]]
+        edge_index = [[0, 1], [1, 0]]
+        node_labels = [[0], [1]]
+
+        with pytest.raises(ValueError, match="node_labels must be 1D array"):
+            graph_to_pyg_data(node_features, edge_index, node_labels=node_labels)
+
     def test_edge_index_format_conversion(self):
         """Test edge index format conversion from [num_edges, 2] to [2, num_edges]."""
         node_features = [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]

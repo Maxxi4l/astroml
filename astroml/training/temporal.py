@@ -525,7 +525,7 @@ class TemporalExperiment:
         }
         
         # Print summary
-        print(f"\nExperiment Results:")
+        print("\nExperiment Results:")
         print(f"Test Accuracy: {test_results['test_accuracy']:.4f}")
         print(f"Temporal AUC: {test_results['temporal_auc']:.4f}")
         print(f"Temporal Accuracy: {test_results['temporal_accuracy']:.4f}")

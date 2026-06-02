@@ -11,3 +11,14 @@ requires-python = ">=3.10"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["astroml*"]
+
+[tool.pytest.ini_options]
+# Scope collection to the dedicated tests/ tree so root-level standalone
+# scripts (e.g. test_data_quality_import.py — a manual smoke that calls
+# sys.exit(1) on ImportError) don't poison pytest collection.
+testpaths = ["tests"]
+# Custom markers used by the CI matrix (#186).
+markers = [
+    "gpu: requires a CUDA-capable runner; auto-skipped on CPU-only environments",
+    "e2e: end-to-end pipeline test (#193)",
+]

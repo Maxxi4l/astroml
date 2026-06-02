@@ -1,0 +1,92 @@
+# Prometheus Configuration for AstroML Monitoring
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'astroml-monitor'
+    environment: 'docker'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+# Alert rules files
+rule_files:
+  - 'alert_rules.yml'
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # PostgreSQL exporter (requires postgres_exporter container)
+  - job_name: 'postgres'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'postgres'
+
+  # Redis exporter (requires redis_exporter container)
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'redis'
+
+  # Python application metrics (astroml services)
+  - job_name: 'astroml-ingestion'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['ingestion:8080']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'ingestion'
+
+  - job_name: 'astroml-streaming'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['streaming:8001']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'streaming'
+
+  # Training service metrics
+  - job_name: 'astroml-training'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['training-cpu:6007', 'training-gpu:6006']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'training'
+
+  # Development service metrics
+  - job_name: 'astroml-dev'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['dev:8002']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'dev'
+
+  # Production service metrics
+  - job_name: 'astroml-production'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['production:8000']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'production'

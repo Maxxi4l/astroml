@@ -49,6 +49,8 @@ pub struct FraudRegistryData {
     pub fraud_reports: Map<Address, Vec<FraudReport>>,
     /// Map of validators to their information
     pub validators: Map<Address, Validator>,
+    /// Map of appeals for fraudulent accounts
+    pub appeals: Map<Address, Appeal>,
     /// Admin address that can manage validators
     pub admin: Address,
     /// Minimum reputation required to submit reports
@@ -57,6 +59,33 @@ pub struct FraudRegistryData {
     pub min_confidence: u32,
     /// Number of validators required to mark an account as fraudulent
     pub consensus_threshold: u32,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Appeal {
+    /// Account being appealed
+    pub account_id: Address,
+    /// Appellant's address
+    pub appellant: Address,
+    /// Reason for appeal
+    pub reason: String,
+    /// Evidence hash for appeal
+    pub evidence_hash: Option<Bytes>,
+    /// Timestamp when appeal was filed
+    pub timestamp: u64,
+    /// Current status of appeal
+    pub status: AppealStatus,
+    /// Admin decision reason
+    pub decision_reason: Option<String>,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum AppealStatus {
+    Pending = 0,
+    Approved = 1,
+    Rejected = 2,
 }
 
 /// Errors that can be returned by the contract
@@ -80,6 +109,14 @@ pub enum Error {
     InvalidInput = 7,
     /// Validator already exists
     ValidatorAlreadyExists = 8,
+    /// Contract already initialized
+    AlreadyInitialized = 9,
+    /// Appeal not found
+    AppealNotFound = 10,
+    /// Appeal already exists
+    AppealAlreadyExists = 11,
+    /// Invalid appeal status
+    InvalidAppealStatus = 12,
 }
 
 /// Fraud Registry Contract
@@ -89,15 +126,19 @@ pub struct FraudRegistry;
 #[contractimpl]
 impl FraudRegistry {
     /// Initialize the contract with an admin address
-    pub fn initialize(env: Env, admin: Address) {
-        // Prevent re-initialization (SC-1 fix)
+    /// 
+    /// # Security Note
+    /// This function can only be called once. Subsequent calls will fail with
+    /// AlreadyInitialized error to prevent re-initialization attacks (SC-1).
+    pub fn initialize(env: Env, admin: Address) -> Result<(), Error> {
+        // Check if already initialized to prevent re-initialization attack (SC-1)
         if env.storage().instance().has(&DATA_KEY) {
-            panic!("Contract already initialized");
+            return Err(Error::AlreadyInitialized);
         }
-        
         let data = FraudRegistryData {
             fraud_reports: Map::new(&env),
             validators: Map::new(&env),
+            appeals: Map::new(&env),
             admin: admin.clone(),
             min_reputation: 50, // Default minimum reputation
             min_confidence: 60,  // Default minimum confidence
@@ -105,6 +146,7 @@ impl FraudRegistry {
         };
         
         env.storage().instance().set(&DATA_KEY, &data);
+        Ok(())
     }
 
     /// Register a new validator
@@ -372,6 +414,10 @@ impl FraudRegistry {
             if thresh == 0 {
                 return Err(Error::InvalidInput);
             }
+            // Add lower bound check to prevent SC-2 vulnerability
+            if thresh < 1 {
+                return Err(Error::InvalidInput);
+            }
         }
 
         // Apply configuration
@@ -394,6 +440,234 @@ impl FraudRegistry {
     pub fn get_config(env: Env) -> (u32, u32, u32) {
         let data = Self::get_data(&env);
         (data.min_reputation, data.min_confidence, data.consensus_threshold)
+    }
+
+    /// Submit an appeal for a fraudulent account
+    /// 
+    /// # Arguments
+    /// * `appellant` - Address of the appellant
+    /// * `account_id` - Address of the account being appealed
+    /// * `reason` - Reason for the appeal
+    /// * `evidence_hash` - Optional hash of evidence data
+    pub fn submit_appeal(
+        env: Env,
+        appellant: Address,
+        account_id: Address,
+        reason: String,
+        evidence_hash: Option<Bytes>,
+    ) -> Result<(), Error> {
+        let mut data = Self::get_data(&env);
+        
+        // Check if account is marked as fraudulent
+        if !Self::is_fraudulent(&env, account_id.clone()) {
+            return Err(Error::InvalidInput);
+        }
+        
+        // Check if appeal already exists
+        if data.appeals.contains_key(account_id.clone()) {
+            return Err(Error::AppealAlreadyExists);
+        }
+        
+        // Create appeal
+        let appeal = Appeal {
+            account_id: account_id.clone(),
+            appellant: appellant.clone(),
+            reason: reason.clone(),
+            evidence_hash,
+            timestamp: env.ledger().timestamp(),
+            status: AppealStatus::Pending,
+            decision_reason: None,
+        };
+        
+        data.appeals.set(account_id, appeal);
+        env.storage().instance().set(&DATA_KEY, &data);
+        
+        Ok(())
+    }
+
+    /// Review and decide on an appeal (admin only)
+    /// 
+    /// # Arguments
+    /// * `admin` - The admin address
+    /// * `account_id` - Address of the account being appealed
+    /// * `approve` - Whether to approve the appeal
+    /// * `decision_reason` - Reason for the decision
+    pub fn review_appeal(
+        env: Env,
+        admin: Address,
+        account_id: Address,
+        approve: bool,
+        decision_reason: String,
+    ) -> Result<(), Error> {
+        let mut data = Self::get_data(&env);
+        
+        // Check if caller is admin
+        if data.admin != admin {
+            return Err(Error::Unauthorized);
+        }
+        
+        // Get appeal
+        let mut appeal = match data.appeals.get(account_id.clone()) {
+            Some(a) => a,
+            None => return Err(Error::AppealNotFound),
+        };
+        
+        // Check if appeal is still pending
+        if appeal.status != AppealStatus::Pending {
+            return Err(Error::InvalidAppealStatus);
+        }
+        
+        // Update appeal status
+        appeal.status = if approve { AppealStatus::Approved } else { AppealStatus::Rejected };
+        appeal.decision_reason = Some(decision_reason);
+        
+        // If approved, remove fraud reports for this account
+        if approve {
+            data.fraud_reports.remove(account_id.clone());
+        }
+        
+        data.appeals.set(account_id, appeal);
+        env.storage().instance().set(&DATA_KEY, &data);
+        
+        Ok(())
+    }
+
+    /// Get appeal information for an account
+    pub fn get_appeal(env: Env, account_id: Address) -> Result<Appeal, Error> {
+        let data = Self::get_data(&env);
+        data.appeals.get(account_id).ok_or(Error::AppealNotFound)
+    }
+
+    /// Adjust validator reputation based on report accuracy (admin only)
+    /// 
+    /// # Arguments
+    /// * `admin` - The admin address
+    /// * `validator_address` - Address of the validator
+    /// * `accuracy_delta` - Reputation adjustment (-100 to +100)
+    pub fn adjust_validator_reputation(
+        env: Env,
+        admin: Address,
+        validator_address: Address,
+        accuracy_delta: i32,
+    ) -> Result<(), Error> {
+        let mut data = Self::get_data(&env);
+        
+        // Check if caller is admin
+        if data.admin != admin {
+            return Err(Error::Unauthorized);
+        }
+        
+        // Validate delta
+        if accuracy_delta < -100 || accuracy_delta > 100 {
+            return Err(Error::InvalidInput);
+        }
+        
+        // Get validator
+        let mut validator = match data.validators.get(validator_address.clone()) {
+            Some(v) => v,
+            None => return Err(Error::ValidatorNotFound),
+        };
+        
+        // Adjust reputation with bounds checking
+        let new_reputation = if accuracy_delta >= 0 {
+            validator.reputation.saturating_add(accuracy_delta as u32)
+        } else {
+            validator.reputation.saturating_sub((-accuracy_delta) as u32)
+        };
+        
+        validator.reputation = new_reputation.min(100);
+        
+        // Update accurate reports count if positive adjustment
+        if accuracy_delta > 0 {
+            validator.accurate_reports += 1;
+        }
+        
+        data.validators.set(validator_address, validator);
+        env.storage().instance().set(&DATA_KEY, &data);
+        
+        Ok(())
+    }
+
+    /// Batch register multiple validators (admin only)
+    /// 
+    /// # Arguments
+    /// * `admin` - The admin address
+    /// * `validator_addresses` - List of validator addresses
+    /// * `initial_reputations` - List of initial reputation scores
+    pub fn batch_register_validators(
+        env: Env,
+        admin: Address,
+        validator_addresses: Vec<Address>,
+        initial_reputations: Vec<u32>,
+    ) -> Result<(), Error> {
+        let mut data = Self::get_data(&env);
+        
+        // Check if caller is admin
+        if data.admin != admin {
+            return Err(Error::Unauthorized);
+        }
+        
+        // Validate input lengths
+        if validator_addresses.len() != initial_reputations.len() {
+            return Err(Error::InvalidInput);
+        }
+        
+        // Register each validator
+        for i in 0..validator_addresses.len() {
+            let validator_address = validator_addresses.get_unchecked(i);
+            let initial_reputation = initial_reputations.get_unchecked(i);
+            
+            // Check if validator already exists
+            if data.validators.contains_key(validator_address.clone()) {
+                continue; // Skip existing validators
+            }
+            
+            // Validate reputation
+            if *initial_reputation > 100 {
+                continue; // Skip invalid reputations
+            }
+            
+            let validator = Validator {
+                address: validator_address.clone(),
+                reputation: *initial_reputation,
+                report_count: 0,
+                accurate_reports: 0,
+                registration_timestamp: env.ledger().timestamp(),
+                is_active: true,
+            };
+            
+            data.validators.set(validator_address, validator);
+        }
+        
+        env.storage().instance().set(&DATA_KEY, &data);
+        
+        Ok(())
+    }
+
+    /// Get all fraudulent accounts
+    pub fn get_fraudulent_accounts(env: Env) -> Vec<Address> {
+        let data = Self::get_data(&env);
+        let mut fraudulent_accounts = Vec::new(&env);
+        
+        for (account_id, _) in data.fraud_reports.iter() {
+            if Self::is_fraudulent(&env, account_id.clone()) {
+                fraudulent_accounts.push_back(account_id);
+            }
+        }
+        
+        fraudulent_accounts
+    }
+
+    /// Get contract statistics
+    pub fn get_statistics(env: Env) -> (u64, u64, u64, u64) {
+        let data = Self::get_data(&env);
+        
+        let total_validators = data.validators.len() as u64;
+        let total_reports = data.fraud_reports.values().fold(0u64, |acc, reports| acc + reports.len());
+        let total_fraudulent = Self::get_fraudulent_accounts(env).len() as u64;
+        let total_appeals = data.appeals.len() as u64;
+        
+        (total_validators, total_reports, total_fraudulent, total_appeals)
     }
 
     /// Helper function to get contract data

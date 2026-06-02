@@ -98,6 +98,55 @@ __pypackages__/
 
 # Celery stuff
 celerybeat-schedule
+
+# Docker & Deployment
+Dockerfile*
+docker-compose*.yml
+.docker/
+.dockerignore
+k8s/
+docker-entrypoint*.sh
+
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+.secrets/
+
+# IDE & Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.circleci/
+.travis.yml
+
+# Development & Temporary
+node_modules/
+.next/
+*.tmp
+tmp/
+temp/
+*.pid
+*.seed
+
+# Documentation (keep only essential runtime docs if needed)
+*.md
+LICENSE
+
+# Test & Benchmark Results
+test_snapshots/
+benchmark_results/
+outputs/
+
+# Docker volumes (exclude from build context)
+backups/
 celerybeat.pid
 
 # SageMath parsed files

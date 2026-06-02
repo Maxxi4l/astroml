@@ -5,7 +5,10 @@
 # ============================================================================
 # BASE STAGE - Common dependencies and Python environment
 # ============================================================================
-FROM python:3.11-slim as base
+# Pin the Python base image to an exact patch + distro (#196) so a rebuild
+# six months from now produces the same intermediate layers. The slim
+# bookworm tag is roughly 60% smaller than the default `python:3.11` image.
+FROM python:3.11.9-slim-bookworm AS base
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
@@ -15,8 +18,10 @@ ENV PYTHONUNBUFFERED=1 \
     ASTROML_ENV=container \
     FEATURE_STORE_PATH=/app/feature_store
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
+# Install system dependencies. `--no-install-recommends` skips the long tail
+# of suggested packages (man-db, locales, etc.) that ship with apt's default
+# recommend resolution and add ~80MB to the image (#196).
+RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     curl \
     git \
@@ -25,6 +30,7 @@ RUN apt-get update && apt-get install -y \
     netcat-openbsd \
     jq \
     wget \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Create app user
@@ -41,12 +47,13 @@ RUN pip install --upgrade pip && \
 # ============================================================================
 # INGESTION STAGE - Optimized for data ingestion and streaming with Feature Store
 # ============================================================================
-FROM base as ingestion
+FROM base AS ingestion
 
-# Install additional dependencies for ingestion
-RUN apt-get update && apt-get install -y \
+# Install additional dependencies for ingestion.
+RUN apt-get update && apt-get install -y --no-install-recommends \
     jq \
     netcat-openbsd \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy application code
@@ -75,10 +82,10 @@ CMD ["python", "-m", "astroml.ingestion"]
 # ============================================================================
 # TRAINING STAGE - Optimized for ML training with GPU support
 # ============================================================================
-FROM nvidia/cuda:12.1-runtime-base-ubuntu22.04 as training-base
+FROM nvidia/cuda:12.1-runtime-base-ubuntu22.04 AS training-base
 
-# Install Python and system dependencies
-RUN apt-get update && apt-get install -y \
+# Install Python and system dependencies.
+RUN apt-get update && apt-get install -y --no-install-recommends \
     python3.11 \
     python3.11-pip \
     python3.11-dev \
@@ -86,6 +93,7 @@ RUN apt-get update && apt-get install -y \
     curl \
     git \
     postgresql-client \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Create symbolic links for python
@@ -241,4 +249,12 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import astroml; import astroml.features" || exit 1
 
 # Default production command (can be overridden)
+CMD ["python", "-m", "astroml.ingestion"]
+
+# ============================================================================
+# TRAINING STAGE - Alias for training with GPU (uses training-base)
+# ============================================================================
+FROM training-base as training
+
+# This stage is used when GPU is available
 CMD ["python", "-m", "astroml.ingestion"]

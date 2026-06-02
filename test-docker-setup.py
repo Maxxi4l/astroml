@@ -230,12 +230,12 @@ import astroml.features
 import pandas as pd
 import numpy as np
 try:
-    import torch
+    import torch  # noqa: E402
     print('PyTorch imported successfully')
 except ImportError:
     print('PyTorch not available')
 try:
-    import networkx
+    import networkx  # noqa: E402
     print('NetworkX imported successfully')
 except ImportError:
     print('NetworkX not available')

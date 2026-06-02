@@ -18,6 +18,7 @@ import seaborn as sns
 
 from .deep_svdd import DeepSVDD, DeepSVDDNetwork
 from astroml.tracking import MLflowTracker
+from astroml.artifacts import get_artifact_store
 
 
 class DeepSVDDTrainer:
@@ -30,12 +31,15 @@ class DeepSVDDTrainer:
         patience: int = 10,
         min_delta: float = 1e-4,
         tracker: Optional[MLflowTracker] = None,
+        artifact_uri: Optional[str] = None,
     ):
         self.model = model
         self.device = device
         self.patience = patience
         self.min_delta = min_delta
         self.tracker = tracker  # None → no MLflow logging
+        self.artifact_uri = artifact_uri or './artifacts'
+        self.artifact_store = get_artifact_store(artifact_uri)
 
         self.training_history = {
             'train_loss': [],
@@ -282,7 +286,20 @@ class DeepSVDDTrainer:
                 'model_class': self.model.__class__.__name__
             }
         }
-        torch.save(checkpoint, 'best_deep_svdd.pth')
+        
+        # Save to artifact store
+        try:
+            checkpoint_uri = self.artifact_store.save_checkpoint(
+                checkpoint,
+                'deep_svdd/best_deep_svdd.pth'
+            )
+            print(f"Checkpoint saved to artifact store: {checkpoint_uri}")
+        except Exception as e:
+            print(f"Warning: Failed to save to artifact store: {e}")
+            # Fallback to local save
+            torch.save(checkpoint, 'best_deep_svdd.pth')
+            print("Checkpoint saved locally to best_deep_svdd.pth")
+        
         if self.tracker is not None:
             self.tracker.log_model_artifact(
                 self.model,
@@ -293,8 +310,13 @@ class DeepSVDDTrainer:
     def load_checkpoint(self, checkpoint_path: str) -> bool:
         """Load model from checkpoint with validation.
         
+        Supports loading from:
+        - Local filesystem paths
+        - S3 (s3://bucket/path)
+        - Google Cloud Storage (gs://bucket/path)
+        
         Args:
-            checkpoint_path: Path to checkpoint file
+            checkpoint_path: Path to checkpoint file (local or artifact URI)
             
         Returns:
             True if checkpoint was loaded successfully
@@ -304,16 +326,49 @@ class DeepSVDDTrainer:
             ValueError: If checkpoint metadata doesn't match model architecture
             RuntimeError: If device is unavailable or checkpoint is corrupted
         """
-        from pathlib import Path
-        
+from pathlib import Path
+
+try:
+    # Try to load from artifact store first if it looks like a relative path
+    if not checkpoint_path.startswith(('/', 's3://', 'gs://', 'http')):
+        try:
+            checkpoint = self.artifact_store.load_checkpoint(
+                checkpoint_path,
+                device=self.device
+            )
+        except Exception:
+            # Fall through to local file loading
+            if not Path(checkpoint_path).exists():
+                raise FileNotFoundError(
+                    f"Checkpoint file not found: {checkpoint_path}\n"
+                    f"Please ensure the file exists and the path is correct."
+                )
+
+            checkpoint = torch.load(
+                checkpoint_path,
+                map_location=self.device,
+                weights_only=True
+            )
+    else:
+        # Load from absolute path or remote URI
         if not Path(checkpoint_path).exists():
             raise FileNotFoundError(
                 f"Checkpoint file not found: {checkpoint_path}\n"
                 f"Please ensure the file exists and the path is correct."
             )
-        
-        try:
-            checkpoint = torch.load(checkpoint_path, map_location=self.device, weights_only=True)
+
+        checkpoint = torch.load(
+            checkpoint_path,
+            map_location=self.device,
+            weights_only=True
+        )
+
+except FileNotFoundError:
+    raise
+except Exception as e:
+    raise RuntimeError(
+        f"Failed to load checkpoint '{checkpoint_path}': {str(e)}"
+    ) from e
         except Exception as e:
             raise RuntimeError(
                 f"Failed to load checkpoint from {checkpoint_path}\n"

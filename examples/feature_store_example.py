@@ -4,11 +4,14 @@ Feature Store Example
 
 This example demonstrates how to use the AstroML Feature Store for
 computing, storing, and managing features for machine learning workflows.
+
+This example can be run from any working directory.
 """
 
 from __future__ import annotations
 
 import logging
+import sys
 import tempfile
 import shutil
 from datetime import datetime, timedelta
@@ -16,6 +19,12 @@ from pathlib import Path
 
 import pandas as pd
 import numpy as np
+
+# Add the parent directory to the path to import astroml
+# This allows the example to run from any working directory
+script_dir = Path(__file__).parent.resolve()
+repo_root = script_dir.parent
+sys.path.insert(0, str(repo_root))
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

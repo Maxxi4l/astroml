@@ -67,18 +67,54 @@ def load_database_config(config_path: Optional[pathlib.Path] = None) -> Database
             f"Database config file not found at {config_path}. "
             f"Please create it or set ASTROML_DATABASE_URL environment variable."
         )
-    
+
     with open(config_path) as f:
         cfg = yaml.safe_load(f)
-    
-    db_data = cfg.get("database", {})
-    
+
+    # #151 — Surface clear, schema-pointing errors instead of silently
+    # falling back to defaults when the YAML is malformed or missing the
+    # `database:` root.
+    if cfg is None:
+        raise ValueError(
+            f"{config_path} is empty. Expected:\n{_database_yaml_template()}"
+        )
+    if not isinstance(cfg, dict):
+        raise ValueError(
+            f"{config_path} must be a YAML mapping at the top level "
+            f"(got {type(cfg).__name__}). Expected:\n{_database_yaml_template()}"
+        )
+    if "database" not in cfg:
+        raise ValueError(
+            f"{config_path} is missing the `database:` key. Expected:\n"
+            f"{_database_yaml_template()}"
+        )
+    if not isinstance(cfg["database"], dict):
+        raise ValueError(
+            f"`database:` in {config_path} must be a mapping "
+            f"(got {type(cfg['database']).__name__}). Expected:\n"
+            f"{_database_yaml_template()}"
+        )
+
     try:
-        return DatabaseConfig.from_dict(db_data)
+        return DatabaseConfig.from_dict(cfg["database"])
     except ValidationError as e:
-        raise ValidationError(
-            f"Invalid database configuration in {config_path}:\n{e}"
+        raise ValueError(
+            f"Invalid database configuration in {config_path}:\n"
+            f"{e}\n\nExpected schema:\n{_database_yaml_template()}"
         ) from e
+
+
+def _database_yaml_template() -> str:
+    """Schema-by-example printed in error messages. Mirrors
+    config/database.yaml so operators can copy-paste a known-good block."""
+    return (
+        "database:\n"
+        "  host: localhost            # non-empty string\n"
+        "  port: 5432                 # 1..65535\n"
+        "  name: astroml              # non-empty string\n"
+        "  user: astroml              # non-empty string\n"
+        "  password: \"\"               # string, may be empty\n"
+    )
 
 
 def resolve_database_url() -> str:
@@ -93,8 +129,11 @@ def resolve_database_url() -> str:
     except FileNotFoundError:
         # Fall back to default if config doesn't exist
         return "postgresql://astroml:@localhost:5432/astroml"
-    except ValidationError as e:
-        # Re-raise validation errors with clear message
+    except (ValidationError, ValueError) as e:
+        # Re-raise validation errors with clear message. `load_database_config`
+        # now raises ValueError (with schema-by-example), but legacy callers
+        # may still see pydantic ValidationError if a future schema check
+        # bypasses the wrapper — catch both.
         raise ValueError(
             f"Database configuration error: {e}\n"
             f"Please fix config/database.yaml or set ASTROML_DATABASE_URL environment variable."

@@ -290,7 +290,8 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
       - prometheus_data:/prometheus
     networks:
       - astroml-network
@@ -308,8 +309,8 @@ services:
       - "3000:3000"
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
-      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
     networks:
       - astroml-network
     depends_on:
@@ -317,6 +318,66 @@ services:
     profiles:
       - monitoring
     restart: unless-stopped
+
+  # Soroban Contract Development
+  soroban-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.soroban
+      target: development
+    container_name: astroml-soroban-dev
+    environment:
+      - RUST_BACKTRACE=1
+      - CARGO_TERM_COLOR=always
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./src:/app/src
+      - ./Cargo.toml:/app/Cargo.toml
+      - ./Cargo.lock:/app/Cargo.lock
+      - soroban_target:/app/target
+      - soroban_logs:/app/logs
+    networks:
+      - astroml-network
+    restart: unless-stopped
+    profiles:
+      - soroban
+
+  # Soroban Contract Build
+  soroban-build:
+    build:
+      context: .
+      dockerfile: Dockerfile.soroban
+      target: build
+    container_name: astroml-soroban-build
+    volumes:
+      - ./src:/app/src
+      - ./Cargo.toml:/app/Cargo.toml
+      - ./Cargo.lock:/app/Cargo.lock
+      - soroban_wasm:/app/target/wasm
+    networks:
+      - astroml-network
+    profiles:
+      - soroban-build
+
+  # Soroban Contract Testing
+  soroban-test:
+    build:
+      context: .
+      dockerfile: Dockerfile.soroban
+      target: testing
+    container_name: astroml-soroban-test
+    environment:
+      - RUST_BACKTRACE=1
+    volumes:
+      - ./src:/app/src
+      - ./Cargo.toml:/app/Cargo.toml
+      - ./Cargo.lock:/app/Cargo.lock
+      - soroban_target:/app/target
+    networks:
+      - astroml-network
+    profiles:
+      - soroban-test
 
 networks:
   astroml-network:
@@ -354,4 +415,10 @@ volumes:
   prometheus_data:
     driver: local
   grafana_data:
+    driver: local
+  soroban_target:
+    driver: local
+  soroban_wasm:
+    driver: local
+  soroban_logs:
     driver: local

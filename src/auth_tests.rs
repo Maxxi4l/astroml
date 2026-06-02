@@ -413,15 +413,18 @@ mod auth_tests {
     #[test]
     fn test_validator_registration_timestamp_persists() {
         let env = Env::default();
+        // Env::default() starts at ledger timestamp 0; set a non-zero value
+        // so the contract's stored registration_timestamp is also non-zero.
+        env.ledger().set_timestamp(1_000_000);
         let (client, admin) = setup_contract(&env);
-        
+
         let validator = Address::generate(&env);
-        
+
         client.register_validator(&admin, &validator, &75_u32);
-        
+
         let validator_info = client.get_validator(&validator);
         let timestamp = validator_info.registration_timestamp;
-        
+
         // Timestamp should be non-zero (set during registration)
         assert!(timestamp > 0, "Registration timestamp should be set");
     }

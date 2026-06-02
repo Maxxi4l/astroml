@@ -40,6 +40,13 @@ from contextlib import contextmanager
 import pandas as pd
 import numpy as np
 
+from astroml.features.schema_validation import (
+    validate_dataframe,
+    dry_run_ingestion,
+    ValidationResult,
+    FEATURE_VALUE_SCHEMA,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -774,24 +781,45 @@ class FeatureStore:
         feature_name: str,
         values: pd.DataFrame,
         metadata: Optional[Dict[str, Any]] = None,
-    ) -> None:
+        validate_schema: bool = True,
+        dry_run: bool = False,
+    ) -> ValidationResult:
         """Store computed feature values.
         
         Args:
             feature_name: Feature name
             values: Feature values to store
             metadata: Additional metadata
+            validate_schema: Whether to validate schema before storing
+            dry_run: If True, validate but don't store
+            
+        Returns:
+            ValidationResult if validate_schema=True, otherwise empty ValidationResult
         """
         # Get feature definition
         feature_def = self.storage.get_feature_definition(f"{feature_name}_v1")
         if feature_def is None:
             raise ValueError(f"Feature '{feature_name}' not found")
         
-        # Store values
-        self.storage.store_feature_values(feature_def.feature_id, values, metadata)
+        # Validate schema if requested
+        if validate_schema:
+            result = dry_run_ingestion(values, FEATURE_VALUE_SCHEMA, log_issues=True)
+            if not result.is_valid and not dry_run:
+                logger.error("Schema validation failed, not storing feature")
+                return result
+        else:
+            result = ValidationResult(is_valid=True)
         
-        # Update cache
-        self._cache[feature_def.feature_id] = values
+        # Store values if not dry run
+        if not dry_run:
+            self.storage.store_feature_values(feature_def.feature_id, values, metadata)
+            # Update cache
+            self._cache[feature_def.feature_id] = values
+            logger.info(f"Stored feature '{feature_name}' with {len(values)} values")
+        else:
+            logger.info(f"Dry run: would store feature '{feature_name}' with {len(values)} values")
+        
+        return result
     
     def get_feature(
         self,
