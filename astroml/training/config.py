@@ -8,6 +8,8 @@ from typing import Any, Dict, List, Literal, Mapping, Optional
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 import yaml
 
+from astroml.storage import ArtifactStorageConfig
+
 
 class EarlyStoppingConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -55,6 +57,10 @@ class TrainingConfig(BaseModel):
     save_best_only: bool = Field(default=True, description="Whether to save only the best model.")
     save_last: bool = Field(default=True, description="Whether to save the last model.")
     optimizer_configs: OptimizerConfig = Field(default_factory=OptimizerConfig)
+    artifact_storage: ArtifactStorageConfig = Field(
+        default_factory=ArtifactStorageConfig,
+        description="Configuration for artifact storage (local, S3, or GCS)"
+    )
 
     @model_validator(mode="after")
     def _validate_split_and_temporal_flags(self) -> "TrainingConfig":
