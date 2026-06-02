@@ -333,10 +333,30 @@ Before submitting a PR:
 
 ## PR Process
 
-### PR Checklist
+### PR Checklist (Copy into your PR description)
+
+```markdown
+## PR Checklist
+
+### Tests
+- [ ] `pytest tests/ -v` passes locally with no failures
+- [ ] New functionality has unit tests covering the happy path and edge cases
+- [ ] Any new async functions are tested with `@pytest.mark.asyncio`
+- [ ] No hardcoded test data paths — fixtures and `test_data/` only
+
+### Lint & Style
+- [ ] `black --check astroml/ tests/` reports no formatting violations
+- [ ] `flake8 astroml/ tests/` reports no errors (line length ≤ 88)
+- [ ] All public functions/classes have Google-style docstrings
+- [ ] Type hints are present on all new function signatures
+
+### Changelog & Docs
+- [ ] `CHANGELOG.md` entry added under `## [Unreleased]`
+- [ ] `README.md` updated if new features, CLI flags, or config keys were added
+- [ ] Example scripts in `examples/` updated or added where appropriate
+```
 
 Every pull request **must** pass all of the following before requesting review.
-Copy this checklist into your PR description and tick each item.
 
 #### Tests
 - [ ] `pytest tests/ -v` passes locally with no failures

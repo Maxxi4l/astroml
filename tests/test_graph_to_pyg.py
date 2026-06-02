@@ -197,6 +197,50 @@ class TestGraphToPyG:
         with pytest.raises(ValueError, match="node_labels shape mismatch"):
             graph_to_pyg_data(node_features, edge_index, node_labels=node_labels)
     
+    def test_edge_features_zero_dim(self):
+        """Test edge features with zero-dimensional features per edge."""
+        node_features = [[1.0, 2.0], [3.0, 4.0]]
+        edge_index = [[0], [1]]
+        edge_features = [[]]  # 1 edge, 0 features
+
+        data = graph_to_pyg_data(node_features, edge_index, edge_features)
+
+        assert data.edge_attr is not None
+        assert data.edge_attr.shape == (1, 0)
+
+    def test_ambiguous_2x2_edge_index(self):
+        """Test edge_index with shape [2, 2] which is both valid [2, N] and [N, 2]."""
+        node_features = [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]
+        edge_index = [[0, 1], [2, 0]]  # [2, 2] — valid as COO
+
+        data = graph_to_pyg_data(node_features, edge_index)
+
+        assert data.edge_index.shape == (2, 2)
+        expected = torch.tensor([[0, 1], [2, 0]], dtype=torch.int64)
+        assert torch.equal(data.edge_index, expected)
+
+    def test_node_features_int_dtype(self):
+        """Test node_features with integer dtype converts to float32."""
+        node_features = np.array([[1, 2], [3, 4]], dtype=np.int32)
+        edge_index = [[0], [1]]
+
+        data = graph_to_pyg_data(node_features, edge_index)
+
+        assert data.x.dtype == torch.float32
+        assert torch.equal(data.x, torch.tensor([[1., 2.], [3., 4.]]))
+
+    def test_node_labels_numpy_int(self):
+        """Test node_labels as numpy int array."""
+        node_features = [[1.0, 2.0], [3.0, 4.0]]
+        edge_index = [[0], [1]]
+        node_labels = np.array([0, 1], dtype=np.int32)
+
+        data = graph_to_pyg_data(node_features, edge_index, node_labels=node_labels)
+
+        assert data.y is not None
+        assert data.y.dtype == torch.int64
+        assert torch.equal(data.y, torch.tensor([0, 1], dtype=torch.int64))
+
     def test_complete_graph_example(self):
         """Test with a complete graph example including all features."""
         # 4 nodes, 3 features each
