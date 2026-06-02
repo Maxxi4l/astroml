@@ -9,7 +9,7 @@ import type {
   TierComparisonDatum,
   FraudStats,
 } from '../lib/types'
-import { get, post } from './client'
+import { get, post, getAuthToken } from './client'
 import { ApiError } from './client'
 
 // Account ID for the current user (in a real app, this would come from auth)
@@ -143,10 +143,51 @@ export async function getReferralLink(): Promise<{ url: string; invited: number;
  */
 type IncomingTransactionListener = (transaction: StellarTransaction) => void
 
+function wsBaseUrl(): string {
+  const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+  return apiBase.replace(/^http/, 'ws') + '/api/v1/ws/transactions'
+}
+
 export function subscribeToIncomingTransactions(listener: IncomingTransactionListener): () => void {
-  // TODO: Implement WebSocket connection
-  // For now, return a no-op cleanup function
-  return () => {}
+  const token = getAuthToken()
+  const url = token ? `${wsBaseUrl()}?token=${encodeURIComponent(token)}` : wsBaseUrl()
+  let ws: WebSocket | null = null
+  let closed = false
+
+  try {
+    ws = new WebSocket(url)
+    ws.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data)
+        if (msg.type === 'transaction' && msg.data) {
+          listener({
+            hash: msg.data.hash,
+            ledgerSequence: msg.data.ledgerSequence,
+            sourceAccount: msg.data.sourceAccount,
+            destinationAccount: msg.data.destinationAccount,
+            amount: msg.data.amount,
+            assetCode: msg.data.assetCode,
+            fee: msg.data.fee,
+            successful: msg.data.successful,
+            createdAt: msg.data.createdAt,
+          })
+        } else if (msg.type === 'ping') {
+          ws?.send('pong')
+        }
+      } catch {
+        // ignore malformed messages
+      }
+    }
+  } catch {
+    // WebSocket unavailable — no-op cleanup
+  }
+
+  return () => {
+    closed = true
+    ws?.close()
+    ws = null
+    void closed
+  }
 }
 
 /**
@@ -159,8 +200,8 @@ export async function getFraudStats(): Promise<FraudStats> {
     id: alert.id,
     accountId: alert.account_id,
     pattern: alert.pattern,
-    riskScore: alert.score,
-    detectedAt: alert.created_at,
+    riskScore: alert.risk_score,
+    detectedAt: alert.detected_at,
     description: alert.description,
   }))
 

@@ -32,7 +32,7 @@ def _sync_url() -> str:
         "DATABASE_URL",
         "postgresql://astroml:astroml@localhost/astroml",
     )
-    return url.replace("+asyncpg", "")
+    return url.replace("+asyncpg", "").replace("+aiosqlite", "")
 
 
 @lru_cache(maxsize=1)
@@ -45,8 +45,19 @@ def _sync_engine():
     return create_engine(_sync_url(), pool_pre_ping=True)
 
 
+def reset_engines() -> None:
+    """Clear cached engines (used in tests when DATABASE_URL changes)."""
+    _async_engine.cache_clear()
+    _sync_engine.cache_clear()
+
+
 def _async_session_factory() -> async_sessionmaker[AsyncSession]:
     return async_sessionmaker(bind=_async_engine(), expire_on_commit=False)
+
+
+def get_async_session_factory() -> async_sessionmaker[AsyncSession]:
+    """Return the shared async session factory (used by scheduler and WS)."""
+    return _async_session_factory()
 
 
 def _sync_session_factory() -> sessionmaker[Session]:

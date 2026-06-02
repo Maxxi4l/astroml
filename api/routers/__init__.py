@@ -1,12 +1,20 @@
 """API routers package."""
-from api.routers.fraud import router as fraud_router
 from api.routers.accounts import router as accounts_router
-from api.routers.monitoring import router as monitoring_router
-from api.routers.loyalty import router as loyalty_router
-
-__all__ = ["fraud_router", "accounts_router", "monitoring_router", "loyalty_router"]
-from api.routers.transactions import router as transactions_router
+from api.routers.auth import router as auth_router
 from api.routers.fraud import router as fraud_router
+from api.routers.loyalty import router as loyalty_router
 from api.routers.models import router as models_router
+from api.routers.monitoring import router as monitoring_router
+from api.routers.transactions import router as transactions_router
+from api.routers.ws import router as ws_router
 
-__all__ = ["transactions_router", "fraud_router", "models_router"]
+__all__ = [
+    "accounts_router",
+    "auth_router",
+    "fraud_router",
+    "loyalty_router",
+    "models_router",
+    "monitoring_router",
+    "transactions_router",
+    "ws_router",
+]

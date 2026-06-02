@@ -21,7 +21,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.database import get_db
-from api.models.orm import Transaction
+from api.models.orm import ApiTransaction as Transaction
 
 router = APIRouter(prefix="/api/v1/transactions", tags=["transactions"])
 

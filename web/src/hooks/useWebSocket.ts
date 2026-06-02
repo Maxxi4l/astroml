@@ -143,7 +143,9 @@ export function useWebSocket({
  * Hook for subscribing to real-time transaction updates
  */
 export function useTransactionUpdates(onTransaction: (transaction: any) => void) {
-  const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8000/ws/transactions'
+  const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+  const wsUrl = (import.meta.env.VITE_WS_URL as string | undefined)
+    || `${apiBase.replace(/^http/, 'ws')}/api/v1/ws/transactions`
 
   return useWebSocket({
     url: wsUrl,
@@ -162,7 +164,9 @@ export function useTransactionUpdates(onTransaction: (transaction: any) => void)
  * Hook for subscribing to real-time fraud alerts
  */
 export function useFraudAlerts(onAlert: (alert: any) => void) {
-  const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8000/ws/fraud'
+  const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+  const wsUrl = (import.meta.env.VITE_WS_URL as string | undefined)
+    || `${apiBase.replace(/^http/, 'ws')}/api/v1/ws/alerts`
 
   return useWebSocket({
     url: wsUrl,

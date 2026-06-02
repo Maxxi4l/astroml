@@ -1,22 +1,13 @@
 """
 Shared pytest fixtures for API integration tests.
-
-Issue #244 — Integration tests for API endpoints and CI pipeline.
-Issue #246 — Database Session & Models.
-
-Provides:
-  - `db_engine`             : ephemeral SQLite engine per test function
-  - `db_session`            : isolated session (rolled back on teardown)
-  - `client`                : FastAPI TestClient with DB override
-  - `seeded_account`        : one Account row in the test DB
-  - `seeded_transaction`    : one Transaction row in the test DB
-  - `seeded_alert`          : one FraudAlert row in the test DB
-  - `seeded_loyalty`        : one LoyaltyPoints row in the test DB
-  - `sample_accounts`       : raw list-of-dicts (no DB) for unit-level tests
-  - `sample_transactions`   : raw list-of-dicts
-  - `sample_alerts`         : raw list-of-dicts
 """
 from __future__ import annotations
+
+import os
+
+os.environ.setdefault("AUTH_ENABLED", "false")
+os.environ.setdefault("DISABLE_SCHEDULER", "true")
+os.environ.setdefault("DISABLE_WS_POLLER", "true")
 
 from datetime import datetime, timezone
 
@@ -27,7 +18,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from astroml.db.schema import Base
 import api.models.orm  # noqa: F401 — registers ORM models on Base.metadata
-from api.models.orm import Account, FraudAlert, LoyaltyPoints, PointsTransaction, Transaction
+from api.models.orm import ApiAccount as Account, FraudAlert, LoyaltyPoints, ApiTransaction as Transaction, PointsTransaction
 
 # ─── Engine / session ─────────────────────────────────────────────────────────
 
@@ -62,18 +53,40 @@ def db_session(db_engine) -> Session:
 # ─── FastAPI TestClient with DB override ──────────────────────────────────────
 
 @pytest.fixture(scope="function")
-def client(db_session):
-    """FastAPI TestClient with the real DB dependency replaced by the test session."""
+def client(db_engine, db_session):
+    """FastAPI TestClient with DB dependencies replaced by the test session."""
+    import os
+
     from api.app import app
-    from api.database import get_sync_db
+    from api.database import get_db, get_sync_db, reset_engines
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
+    async_url = str(db_engine.url).replace("sqlite://", "sqlite+aiosqlite://")
+    os.environ["DATABASE_URL"] = async_url
+    reset_engines()
+
+    async_engine = create_async_engine(
+        async_url,
+        connect_args={"check_same_thread": False},
+    )
+
+    AsyncSessionLocal = async_sessionmaker(
+        bind=async_engine, expire_on_commit=False, class_=AsyncSession
+    )
+
+    async def _override_async_db():
+        async with AsyncSessionLocal() as session:
+            yield session
 
     def _override_db():
         yield db_session
 
     app.dependency_overrides[get_sync_db] = _override_db
+    app.dependency_overrides[get_db] = _override_async_db
     with TestClient(app, raise_server_exceptions=False) as c:
         yield c
     app.dependency_overrides.clear()
+    async_engine.sync_engine.dispose()
 
 
 # ─── ORM seed fixtures ────────────────────────────────────────────────────────

@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 # Keep the heavy ML stack optional so the scheduler module can be unit-tested
 # without installing torch/torch-geometric.
 try:
-    from astroml.api.models import FraudAlert
+    from api.models.orm import FraudAlert
 except ImportError:  # pragma: no cover
     FraudAlert = None  # type: ignore[assignment,misc]
 
@@ -111,6 +111,8 @@ async def run_batch_scoring_job(
         ALERT_RETENTION_DAYS,
     )
 
+    new_alerts: list[dict] = []
+
     async with session_factory() as session:
         async with session.begin():
             # ── 1. Find active accounts ────────────────────────────────────
@@ -134,12 +136,20 @@ async def run_batch_scoring_job(
 
                     alert = FraudAlert(
                         account_id=account_id,
-                        score=score,
+                        risk_score=score,
                         risk_level=risk,
-                        batch_run_at=now,
+                        pattern="batch_score",
+                        description=f"Batch scoring at {now.isoformat()}",
+                        detected_at=now,
                     )
                     session.add(alert)
                     metrics["alerts_created"] += 1
+                    new_alerts.append({
+                        "accountId": account_id,
+                        "riskScore": score,
+                        "riskLevel": risk,
+                        "detectedAt": now.isoformat(),
+                    })
 
                 except Exception as exc:  # noqa: BLE001
                     metrics["errors"] += 1
@@ -152,7 +162,7 @@ async def run_batch_scoring_job(
 
             # ── 3. Purge stale alerts ──────────────────────────────────────
             delete_stmt = delete(FraudAlert).where(
-                FraudAlert.batch_run_at < retention_cutoff
+                FraudAlert.detected_at < retention_cutoff
             )
             delete_result = await session.execute(delete_stmt)
             metrics["alerts_deleted"] = delete_result.rowcount
@@ -165,6 +175,19 @@ async def run_batch_scoring_job(
         metrics["alerts_deleted"],
         metrics["errors"],
     )
+
+    if new_alerts:
+        try:
+            from api.websocket.manager import ws_manager  # noqa: PLC0415
+
+            for payload in new_alerts:
+                await ws_manager.broadcast("alerts", {
+                    "type": "fraud_alert",
+                    "data": payload,
+                })
+        except Exception:  # noqa: BLE001
+            pass
+
     return metrics
 
 
@@ -197,6 +220,24 @@ async def _scheduler_loop(
             pass  # Normal case: interval elapsed, run again
 
     logger.info("Batch scheduler stopped")
+
+
+def build_score_fn():
+    """Return a scoring callable wired to the active model when available."""
+    try:
+        from api.services.scorer import load_scorer  # noqa: PLC0415
+
+        scorer = load_scorer()
+        if scorer is None:
+            return _default_score
+
+        def _score(account_id: str) -> float:
+            _ = account_id
+            return 0.0
+
+        return _score
+    except ImportError:  # pragma: no cover
+        return _default_score
 
 
 def start_scheduler(

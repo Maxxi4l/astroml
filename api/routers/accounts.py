@@ -30,7 +30,7 @@ router = APIRouter(prefix="/api/v1/accounts", tags=["accounts"])
 
 
 async def _require_account(public_key: str, db: AsyncSession):
-    from api.models.orm import Account  # noqa: PLC0415
+    from api.models.orm import ApiAccount as Account  # noqa: PLC0415
 
     result = await db.execute(select(Account).where(Account.public_key == public_key))
     acc = result.scalar_one_or_none()
@@ -51,7 +51,7 @@ async def list_accounts(
     db: AsyncSession = Depends(get_db),
 ):
     """List accounts with optional filtering and pagination."""
-    from api.models.orm import Account  # noqa: PLC0415
+    from api.models.orm import ApiAccount as Account  # noqa: PLC0415
 
     q = select(Account)
     if public_key:
@@ -93,7 +93,7 @@ async def get_account_transactions(
     """Return paginated transactions for an account."""
     await _require_account(public_key, db)
 
-    from api.models.orm import Transaction  # noqa: PLC0415
+    from api.models.orm import ApiTransaction as Transaction  # noqa: PLC0415
 
     q = (
         select(Transaction)

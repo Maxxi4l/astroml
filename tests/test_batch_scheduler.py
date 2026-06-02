@@ -14,7 +14,7 @@ import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from astroml.api.models import APIBase, FraudAlert
+from api.models.orm import FraudAlert  # noqa: F401 — registers ORM on Base
 from astroml.db.schema import Base as SchemaBase  # for accounts table
 from astroml.api.scheduler import (
     ALERT_RETENTION_DAYS,
@@ -32,7 +32,6 @@ async def engine():
     eng = create_async_engine("sqlite+aiosqlite:///:memory:")
     async with eng.begin() as conn:
         # Create API-layer tables (FraudAlert) and Stellar schema tables (accounts etc.)
-        await conn.run_sync(APIBase.metadata.create_all)
         await conn.run_sync(SchemaBase.metadata.create_all)
     yield eng
     await eng.dispose()
@@ -140,9 +139,9 @@ class TestRunBatchScoringJob:
             async with sess.begin():
                 stale = FraudAlert(
                     account_id="GAAA_OLD",
-                    score=0.1,
+                    risk_score=0.1,
                     risk_level="low",
-                    batch_run_at=stale_time,
+                    detected_at=stale_time,
                 )
                 sess.add(stale)
 
@@ -170,9 +169,9 @@ class TestRunBatchScoringJob:
             async with sess.begin():
                 fresh = FraudAlert(
                     account_id="GAAA_NEW",
-                    score=0.7,
+                    risk_score=0.7,
                     risk_level="medium",
-                    batch_run_at=recent_time,
+                    detected_at=recent_time,
                 )
                 sess.add(fresh)
 

@@ -42,7 +42,7 @@ _ID = BigInteger().with_variant(Integer(), "sqlite")
 # Account
 # ---------------------------------------------------------------------------
 
-class Account(Base):
+class ApiAccount(Base):
     """Stellar account info for the API layer.
 
     Separate from the ingestion-layer ``accounts`` table so the API can
@@ -69,7 +69,7 @@ class Account(Base):
 # Transaction
 # ---------------------------------------------------------------------------
 
-class Transaction(Base):
+class ApiTransaction(Base):
     """Blockchain transaction record for the API layer."""
 
     __tablename__ = "api_transactions"
@@ -197,3 +197,48 @@ class ModelRegistry(Base):
         Index("ix_model_registry_name_version", "name", "version", unique=True),
         Index("ix_model_registry_status", "status"),
     )
+
+
+# ---------------------------------------------------------------------------
+# Auth (issue #240)
+# ---------------------------------------------------------------------------
+
+class User(Base):
+    """Dashboard/API user for JWT authentication."""
+
+    __tablename__ = "api_users"
+
+    id: Mapped[int] = mapped_column(_ID, primary_key=True, autoincrement=True)
+    username: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    hashed_password: Mapped[str] = mapped_column(String(256), nullable=False)
+    scopes: Mapped[Optional[list]] = mapped_column(
+        JSON().with_variant(JSONB(), "postgresql"), nullable=False, server_default="[]"
+    )
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+    created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
+
+
+class ApiKey(Base):
+    """Machine-to-machine API key."""
+
+    __tablename__ = "api_keys"
+
+    id: Mapped[int] = mapped_column(_ID, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(_ID, nullable=False)
+    key_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    scopes: Mapped[Optional[list]] = mapped_column(
+        JSON().with_variant(JSONB(), "postgresql"), nullable=False, server_default="[]"
+    )
+    expires_at: Mapped[Optional[datetime]] = mapped_column()
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+    created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
+
+    __table_args__ = (
+        Index("ix_api_keys_user_id", "user_id"),
+        Index("ix_api_keys_key_hash", "key_hash"),
+    )
+
+
+# Backward-compatible aliases removed — use ApiAccount / ApiTransaction to avoid
+# SQLAlchemy mapper name collisions with astroml.db.schema.

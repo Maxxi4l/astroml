@@ -29,11 +29,11 @@ class ScoreResponse(BaseModel):
 class FraudAlertOut(BaseModel):
     id: int
     account_id: str
-    score: float
+    pattern: Optional[str] = None
+    risk_score: float
     risk_level: str
-    batch_run_at: datetime
-    created_at: datetime
-    notes: Optional[str] = None
+    description: Optional[str] = None
+    detected_at: datetime
 
     class Config:
         from_attributes = True
