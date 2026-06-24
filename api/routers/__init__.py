@@ -9,6 +9,7 @@ from api.routers.models import router as models_router
 from api.routers.monitoring import router as monitoring_router
 from api.routers.notifications import router as notifications_router
 from api.routers.transactions import router as transactions_router
+from api.routers.onboarding import router as onboarding_router
 from api.routers.ws import router as ws_router
 
 __all__ = [
@@ -21,6 +22,7 @@ __all__ = [
     "models_router",
     "monitoring_router",
     "notifications_router",
+    "onboarding_router",
     "transactions_router",
     "ws_router",
 ]

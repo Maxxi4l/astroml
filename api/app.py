@@ -39,6 +39,7 @@ from api.routers import (
     models_router,
     monitoring_router,
     notifications_router,
+    onboarding_router,
     transactions_router,
     ws_router,
 )
@@ -133,6 +134,7 @@ app.include_router(loyalty_router)
 app.include_router(models_router)
 app.include_router(mentorship_router)
 app.include_router(notifications_router)
+app.include_router(onboarding_router)
 app.include_router(ws_router)
 
 

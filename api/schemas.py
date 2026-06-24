@@ -437,3 +437,26 @@ class DigestEmailOut(BaseModel):
     period: str
     notifications_count: int
     generated_at: datetime
+
+
+# ─── Onboarding ────────────────────────────────────────────────────────────
+
+class OnboardingStepIn(BaseModel):
+    step: str
+
+
+class OnboardingChecklistItem(BaseModel):
+    step: str
+    label: str
+    completed: bool
+
+
+class OnboardingProgressOut(BaseModel):
+    github_username: str
+    checklist: List[OnboardingChecklistItem]
+    completed_count: int
+    total_steps: int
+    progress_pct: int
+    is_complete: bool
+    started_at: str
+    last_updated: str
