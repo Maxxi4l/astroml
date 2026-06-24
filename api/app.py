@@ -32,6 +32,7 @@ from api.database import get_async_session_factory
 from api.routers import (
     accounts_router,
     auth_router,
+    contributors_router,
     errors_router,
     fraud_router,
     loyalty_router,
@@ -132,6 +133,7 @@ app.include_router(accounts_router)
 app.include_router(monitoring_router)
 app.include_router(loyalty_router)
 app.include_router(models_router)
+app.include_router(contributors_router)
 app.include_router(mentorship_router)
 app.include_router(notifications_router)
 app.include_router(onboarding_router)
