@@ -23,6 +23,7 @@ from typing import AsyncGenerator
 from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
+from astroml.api.routers import accounts, fraud
 from astroml.api.scheduler import start_scheduler, stop_scheduler
 
 # ─── Database setup ───────────────────────────────────────────────────────────
@@ -62,6 +63,10 @@ app = FastAPI(
     ),
     lifespan=lifespan,
 )
+
+
+app.include_router(accounts.router, tags=["accounts"])
+app.include_router(fraud.router, tags=["fraud"])
 
 
 @app.get("/health", tags=["ops"])
