@@ -1,5 +1,6 @@
 import { memo, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import {
   Bar,
   BarChart,
@@ -76,6 +77,7 @@ const accuracyFormatter = (value: number) => `${(value * 100).toFixed(1)}%`
 const driftFormatter = (value: number) => value.toFixed(2)
 
 export const ModelMonitoringDashboard = memo(function ModelMonitoringDashboard() {
+  const { t } = useTranslation()
   const { data, isLoading, error } = useQuery({
     queryKey: ['monitoring'],
     queryFn: getMonitoringData,
@@ -89,14 +91,14 @@ export const ModelMonitoringDashboard = memo(function ModelMonitoringDashboard()
   )
 
   if (isLoading) return <SkeletonModelMonitoring />
-  if (error) return <div>Error loading monitoring data: {(error as Error).message}</div>
-  if (!data) return <div>No monitoring data available</div>
+  if (error) return <div>{t('monitoring.errors.loading', { message: (error as Error).message })}</div>
+  if (!data) return <div>{t('monitoring.errors.no_data')}</div>
 
   const metrics = [
-    { label: 'Prediction Accuracy', value: `${(data.metrics.accuracy * 100).toFixed(1)}%`, description: 'Latest end-to-end model accuracy' },
-    { label: 'F1 Score', value: data.metrics.f1.toFixed(2), description: 'Balanced precision / recall' },
-    { label: 'Data Drift', value: data.metrics.drift_score.toFixed(2), description: 'Drift score over the latest week' },
-    { label: 'AUC', value: data.metrics.auc.toFixed(2), description: 'Link-prediction separability' },
+    { label: t('monitoring.metrics.accuracy'), value: `${(data.metrics.accuracy * 100).toFixed(1)}%`, description: t('monitoring.metrics.accuracy_desc') },
+    { label: t('monitoring.metrics.f1'), value: data.metrics.f1.toFixed(2), description: t('monitoring.metrics.f1_desc') },
+    { label: t('monitoring.metrics.drift'), value: data.metrics.drift_score.toFixed(2), description: t('monitoring.metrics.drift_desc') },
+    { label: t('monitoring.metrics.auc'), value: data.metrics.auc.toFixed(2), description: t('monitoring.metrics.auc_desc') },
   ]
 
   return (
@@ -131,7 +133,7 @@ export const ModelMonitoringDashboard = memo(function ModelMonitoringDashboard()
             border: '1px solid #ececec',
           }}
         >
-          <h2 style={{ marginTop: 0 }}>Prediction Accuracy Trend</h2>
+          <h2 style={{ marginTop: 0 }}>{t('monitoring.charts.accuracy_trend')}</h2>
           <ResponsiveContainer width="100%" height={240}>
             <LineChart data={performanceData} {...chartConfig}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -160,7 +162,7 @@ export const ModelMonitoringDashboard = memo(function ModelMonitoringDashboard()
             border: '1px solid #ececec',
           }}
         >
-          <h2 style={{ marginTop: 0 }}>Drift Detection</h2>
+          <h2 style={{ marginTop: 0 }}>{t('monitoring.charts.drift_detection')}</h2>
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={performanceData} {...chartConfig}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -172,7 +174,7 @@ export const ModelMonitoringDashboard = memo(function ModelMonitoringDashboard()
             </BarChart>
           </ResponsiveContainer>
           <p style={{ marginTop: 12, fontSize: 14, color: '#555' }}>
-            Overall model drift is moderate. Watch for sudden deviations in feature distributions.
+            {t('monitoring.charts.drift_description')}
           </p>
         </div>
       </div>

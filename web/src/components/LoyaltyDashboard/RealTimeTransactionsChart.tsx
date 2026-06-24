@@ -1,4 +1,5 @@
 import { memo, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   CartesianGrid,
   Line,
@@ -10,7 +11,7 @@ import {
 } from 'recharts'
 import { useIncomingTransactions } from '../../hooks/useIncomingTransactions'
 import { VirtualizedTooltip } from '../charts/VirtualizedTooltip'
-import { createChartConfig, sampleData, CHART_SAMPLE_THRESHOLD, CHART_TARGET_POINTS } from '../../lib/chartUtils'
+import { createChartConfig, sampleData, CHART_TARGET_POINTS } from '../../lib/chartUtils'
 
 type ChartPoint = {
   id: string
@@ -23,6 +24,7 @@ const chartConfig = createChartConfig()
 const tooltipFormatter = (value: number) => `${value.toFixed(2)} XLM`
 
 export const RealTimeTransactionsChart = memo(function RealTimeTransactionsChart() {
+  const { t } = useTranslation()
   const transactions = useIncomingTransactions()
 
   // Memoize the chart data transformation + downsampling so it only recomputes
@@ -55,11 +57,11 @@ export const RealTimeTransactionsChart = memo(function RealTimeTransactionsChart
           flexWrap: 'wrap',
         }}
       >
-        <h2 style={{ margin: '8px 0' }}>Live Stellar Transactions</h2>
+        <h2 style={{ margin: '8px 0' }}>{t('realtime.title')}</h2>
         <div style={{ color: '#555', fontSize: 14 }}>
           {latest
-            ? `Latest: ${latest.amount.toFixed(2)} XLM from ${latest.sourceAccount}`
-            : 'Waiting for stream...'}
+            ? t('realtime.latest', { amount: latest.amount.toFixed(2), source: latest.sourceAccount })
+            : t('realtime.waiting')}
         </div>
       </div>
       <div style={{ width: '100%', height: 300 }}>

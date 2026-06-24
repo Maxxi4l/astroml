@@ -1,9 +1,12 @@
+import { useTranslation } from 'react-i18next'
 import type { Benefit } from '../../lib/types'
 
 export function TierBenefitsCard({ benefits }: { benefits: Benefit[] }) {
+  const { t } = useTranslation()
+
   return (
     <div>
-      <h2 style={{ margin: '8px 0' }}>Tier Benefits</h2>
+      <h2 style={{ margin: '8px 0' }}>{t('loyalty.benefits')}</h2>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
         {benefits.map((b) => (
           <div key={b.id} style={card}>

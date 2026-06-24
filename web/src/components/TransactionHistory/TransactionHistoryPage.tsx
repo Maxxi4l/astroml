@@ -1,9 +1,11 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useTransactionHistory } from '../../hooks/useTransactionHistory'
 import { TransactionHistoryTable } from './TransactionHistoryTable'
 import { SkeletonTransactionHistory } from '../Skeletons'
 
 export function TransactionHistoryPage() {
+  const { t } = useTranslation()
   const [page, setPage] = useState(0)
   const pageSize = 20
   
@@ -29,9 +31,9 @@ export function TransactionHistoryPage() {
   return (
     <div style={{ display: 'grid', gap: 24 }}>
       <div>
-        <h1 style={{ margin: '0 0 16px 0', fontSize: 28, fontWeight: 700 }}>Transaction History</h1>
+        <h1 style={{ margin: '0 0 16px 0', fontSize: 28, fontWeight: 700 }}>{t('transactions.title')}</h1>
         <p style={{ margin: 0, color: '#666' }}>
-          View and search Stellar blockchain transactions
+          {t('transactions.subtitle')}
         </p>
       </div>
 
@@ -44,7 +46,7 @@ export function TransactionHistoryPage() {
         <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
           <div>
             <label style={{ display: 'block', marginBottom: 4, fontSize: 13, fontWeight: 600, color: '#555' }}>
-              Source Account
+              {t('transactions.filters.source_account')}
             </label>
             <input
               type="text"
@@ -63,7 +65,7 @@ export function TransactionHistoryPage() {
 
           <div>
             <label style={{ display: 'block', marginBottom: 4, fontSize: 13, fontWeight: 600, color: '#555' }}>
-              Operation Type
+              {t('transactions.filters.operation_type')}
             </label>
             <select
               value={filters.operationType || ''}
@@ -76,18 +78,18 @@ export function TransactionHistoryPage() {
                 fontSize: 14,
               }}
             >
-              <option value="">All Types</option>
-              <option value="payment">Payment</option>
-              <option value="create_account">Create Account</option>
-              <option value="change_trust">Change Trust</option>
-              <option value="path_payment">Path Payment</option>
-              <option value="manage_buy_offer">Manage Buy Offer</option>
+              <option value="">{t('transactions.filters.all_types')}</option>
+              <option value="payment">{t('transactions.filters.types.payment')}</option>
+              <option value="create_account">{t('transactions.filters.types.create_account')}</option>
+              <option value="change_trust">{t('transactions.filters.types.change_trust')}</option>
+              <option value="path_payment">{t('transactions.filters.types.path_payment')}</option>
+              <option value="manage_buy_offer">{t('transactions.filters.types.manage_buy_offer')}</option>
             </select>
           </div>
 
           <div>
             <label style={{ display: 'block', marginBottom: 4, fontSize: 13, fontWeight: 600, color: '#555' }}>
-              Start Date
+              {t('transactions.filters.start_date')}
             </label>
             <input
               type="date"
@@ -105,7 +107,7 @@ export function TransactionHistoryPage() {
 
           <div>
             <label style={{ display: 'block', marginBottom: 4, fontSize: 13, fontWeight: 600, color: '#555' }}>
-              End Date
+              {t('transactions.filters.end_date')}
             </label>
             <input
               type="date"
@@ -135,7 +137,7 @@ export function TransactionHistoryPage() {
               fontSize: 13,
             }}
           >
-            Clear Filters
+            {t('transactions.filters.clear')}
           </button>
         </div>
       </div>
@@ -150,7 +152,7 @@ export function TransactionHistoryPage() {
 
       {history && (
         <div style={{ fontSize: 13, color: '#666', textAlign: 'center' }}>
-          Showing {Math.min((page + 1) * pageSize, history.total)} of {history.total} transactions
+          {t('transactions.showing', { start: Math.min((page + 1) * pageSize, history.total), total: history.total })}
         </div>
       )}
     </div>

@@ -1,4 +1,5 @@
 import React from 'react'
+import { useTranslation } from 'react-i18next'
 import type { BlockchainTransaction, TransactionHistoryResponse } from '../../lib/types'
 
 export function TransactionHistoryTable({
@@ -14,6 +15,7 @@ export function TransactionHistoryTable({
   pageSize: number
   onPageChange: (p: number) => void
 }) {
+  const { t } = useTranslation()
   const total = response?.total ?? 0
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
 
@@ -28,22 +30,22 @@ export function TransactionHistoryTable({
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2 style={{ margin: '8px 0' }}>Transaction History</h2>
+        <h2 style={{ margin: '8px 0' }}>{t('transactions.table.title')}</h2>
         <div>
           <button 
             disabled={page === 0 || loading} 
             onClick={() => onPageChange(page - 1)}
             style={{ padding: '6px 12px', marginRight: '8px', cursor: page === 0 || loading ? 'not-allowed' : 'pointer' }}
           >
-            Prev
+            {t('transactions.table.prev')}
           </button>
-          <span style={{ margin: '0 8px' }}>Page {page + 1} / {totalPages}</span>
+          <span style={{ margin: '0 8px' }}>{t('transactions.table.page', { current: page + 1, total: totalPages })}</span>
           <button 
             disabled={page + 1 >= totalPages || loading} 
             onClick={() => onPageChange(page + 1)}
             style={{ padding: '6px 12px', marginLeft: '8px', cursor: page + 1 >= totalPages || loading ? 'not-allowed' : 'pointer' }}
           >
-            Next
+            {t('transactions.table.next')}
           </button>
         </div>
       </div>
@@ -51,24 +53,24 @@ export function TransactionHistoryTable({
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr>
-              <th style={th}>Hash</th>
-              <th style={th}>Ledger</th>
-              <th style={th}>Source</th>
-              <th style={th}>Destination</th>
-              <th style={th}>Type</th>
-              <th style={th}>Amount</th>
-              <th style={th}>Asset</th>
-              <th style={th}>Fee</th>
-              <th style={th}>Status</th>
-              <th style={th}>Date</th>
+              <th style={th}>{t('transactions.table.columns.hash')}</th>
+              <th style={th}>{t('transactions.table.columns.ledger')}</th>
+              <th style={th}>{t('transactions.table.columns.source')}</th>
+              <th style={th}>{t('transactions.table.columns.destination')}</th>
+              <th style={th}>{t('transactions.table.columns.type')}</th>
+              <th style={th}>{t('transactions.table.columns.amount')}</th>
+              <th style={th}>{t('transactions.table.columns.asset')}</th>
+              <th style={th}>{t('transactions.table.columns.fee')}</th>
+              <th style={th}>{t('transactions.table.columns.status')}</th>
+              <th style={th}>{t('transactions.table.columns.date')}</th>
             </tr>
           </thead>
           <tbody>
             {loading && (
-              <tr><td colSpan={10} style={{ padding: 12, textAlign: 'center' }}>Loading...</td></tr>
+              <tr><td colSpan={10} style={{ padding: 12, textAlign: 'center' }}>{t('transactions.table.loading')}</td></tr>
             )}
             {!loading && response?.data.length === 0 && (
-              <tr><td colSpan={10} style={{ padding: 12, textAlign: 'center' }}>No transactions found</td></tr>
+              <tr><td colSpan={10} style={{ padding: 12, textAlign: 'center' }}>{t('transactions.table.no_data')}</td></tr>
             )}
             {!loading && response?.data.map((tx) => (
               <tr key={tx.hash}>
@@ -89,7 +91,7 @@ export function TransactionHistoryTable({
                       {formatAddress(tx.destinationAccount)}
                     </span>
                   ) : (
-                    <span style={{ color: '#999' }}>-</span>
+                    <span style={{ color: '#999' }}>{t('transactions.table.placeholder')}</span>
                   )}
                 </td>
                 <td style={td}>{tx.operationType}</td>
@@ -97,7 +99,7 @@ export function TransactionHistoryTable({
                   {tx.amount !== undefined ? tx.amount.toLocaleString() : '-'}
                 </td>
                 <td style={td}>{tx.assetCode || 'XLM'}</td>
-                <td style={td}>{tx.fee} stroops</td>
+                <td style={td}>{tx.fee} {t('transactions.table.fee_unit')}</td>
                 <td style={td}>
                   <span style={{
                     padding: '2px 8px',
@@ -106,7 +108,7 @@ export function TransactionHistoryTable({
                     backgroundColor: tx.successful ? '#d4edda' : '#f8d7da',
                     color: tx.successful ? '#155724' : '#721c24',
                   }}>
-                    {tx.successful ? 'Success' : 'Failed'}
+                    {tx.successful ? t('transactions.table.success') : t('transactions.table.failed')}
                   </span>
                 </td>
                 <td style={td}>
