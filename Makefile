@@ -1,4 +1,4 @@
-.PHONY: help quickstart test test-api lint format clean install
+.PHONY: help quickstart test test-api lint format clean install run-api
 
 help:
 	@echo "AstroML Development Commands"
@@ -12,6 +12,7 @@ help:
 	@echo "make format              Format code (black, isort)"
 	@echo "make install             Install development dependencies"
 	@echo "make clean               Clean build artifacts and cache"
+	@echo "make run-api             Start the FastAPI dev server on localhost:8000"
 	@echo ""
 
 quickstart:
@@ -33,6 +34,9 @@ lint:
 format:
 	black astroml/ tests/
 	isort astroml/ tests/
+
+run-api:
+	uvicorn api.app:app --host 0.0.0.0 --port 8000 --reload
 
 install:
 	pip install -e ".[dev]"
