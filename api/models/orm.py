@@ -240,5 +240,202 @@ class ApiKey(Base):
     )
 
 
+# ---------------------------------------------------------------------------
+# Mentorship (Contributors)
+# ---------------------------------------------------------------------------
+
+class Mentor(Base):
+    """Mentor profile in the mentorship program."""
+
+    __tablename__ = "mentors"
+
+    id: Mapped[int] = mapped_column(_ID, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(_ID, nullable=False, unique=True)
+    github_username: Mapped[str] = mapped_column(String(128), nullable=False)
+    bio: Mapped[Optional[str]] = mapped_column(Text)
+    skills: Mapped[Optional[list]] = mapped_column(
+        JSON().with_variant(JSONB(), "postgresql"), nullable=False, server_default="[]"
+    )  # e.g., ["ML", "Data Science", "Python"]
+    years_experience: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    preferred_session_day: Mapped[Optional[str]] = mapped_column(
+        String(16)
+    )  # e.g., "Monday", "Flexible"
+    max_mentees: Mapped[int] = mapped_column(Integer, nullable=False, server_default="3")
+    is_available: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+    created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+
+    __table_args__ = (
+        Index("ix_mentors_github_username", "github_username"),
+        Index("ix_mentors_is_available", "is_available"),
+    )
+
+
+class Mentee(Base):
+    """Mentee profile seeking mentorship."""
+
+    __tablename__ = "mentees"
+
+    id: Mapped[int] = mapped_column(_ID, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(_ID, nullable=False, unique=True)
+    github_username: Mapped[str] = mapped_column(String(128), nullable=False)
+    bio: Mapped[Optional[str]] = mapped_column(Text)
+    learning_interests: Mapped[Optional[list]] = mapped_column(
+        JSON().with_variant(JSONB(), "postgresql"), nullable=False, server_default="[]"
+    )  # e.g., ["ML", "Python"]
+    years_experience: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    preferred_session_day: Mapped[Optional[str]] = mapped_column(
+        String(16)
+    )  # e.g., "Wednesday", "Flexible"
+    goals: Mapped[Optional[str]] = mapped_column(Text)  # mentorship goals/objectives
+    created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+
+    __table_args__ = (
+        Index("ix_mentees_github_username", "github_username"),
+    )
+
+
+class Mentorship(Base):
+    """Active mentorship relationship between mentor and mentee."""
+
+    __tablename__ = "mentorships"
+
+    id: Mapped[int] = mapped_column(_ID, primary_key=True, autoincrement=True)
+    mentor_id: Mapped[int] = mapped_column(_ID, nullable=False)
+    mentee_id: Mapped[int] = mapped_column(_ID, nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(32), nullable=False, server_default="active"
+    )  # active|paused|completed
+    match_score: Mapped[float] = mapped_column(Float, nullable=False)  # 0-1 compatibility score
+    started_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
+    ended_at: Mapped[Optional[datetime]] = mapped_column()
+    notes: Mapped[Optional[str]] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
+
+    __table_args__ = (
+        Index("ix_mentorships_mentor_id", "mentor_id"),
+        Index("ix_mentorships_mentee_id", "mentee_id"),
+        Index("ix_mentorships_status", "status"),
+    )
+
+
+class MentorshipSession(Base):
+    """Record of a single mentorship session."""
+
+    __tablename__ = "mentorship_sessions"
+
+    id: Mapped[int] = mapped_column(_ID, primary_key=True, autoincrement=True)
+    mentorship_id: Mapped[int] = mapped_column(_ID, nullable=False)
+    session_date: Mapped[datetime] = mapped_column(nullable=False)
+    duration_minutes: Mapped[int] = mapped_column(Integer, nullable=False)
+    topic: Mapped[str] = mapped_column(String(256), nullable=False)
+    notes: Mapped[Optional[str]] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
+
+    __table_args__ = (
+        Index("ix_mentorship_sessions_mentorship_id", "mentorship_id"),
+        Index("ix_mentorship_sessions_session_date", "session_date"),
+    )
+
+
+class MentorshipFeedback(Base):
+    """Feedback from mentor or mentee after a session."""
+
+    __tablename__ = "mentorship_feedback"
+
+    id: Mapped[int] = mapped_column(_ID, primary_key=True, autoincrement=True)
+    session_id: Mapped[int] = mapped_column(_ID, nullable=False)
+    mentorship_id: Mapped[int] = mapped_column(_ID, nullable=False)
+    rating: Mapped[int] = mapped_column(Integer, nullable=False)  # 1-5 stars
+    feedback_text: Mapped[Optional[str]] = mapped_column(Text)
+    is_mentor_feedback: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
+
+    __table_args__ = (
+        Index("ix_mentorship_feedback_session_id", "session_id"),
+        Index("ix_mentorship_feedback_mentorship_id", "mentorship_id"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Notifications (Contributors)
+# ---------------------------------------------------------------------------
+
+class Notification(Base):
+    """User notification record."""
+
+    __tablename__ = "notifications"
+
+    id: Mapped[int] = mapped_column(_ID, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(_ID, nullable=False)
+    event_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    title: Mapped[str] = mapped_column(String(256), nullable=False)
+    content: Mapped[Optional[str]] = mapped_column(Text)
+    link: Mapped[Optional[str]] = mapped_column(String(512))
+    actor: Mapped[Optional[str]] = mapped_column(String(128))
+    is_read: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
+
+    __table_args__ = (
+        Index("ix_notifications_user_id", "user_id"),
+        Index("ix_notifications_is_read", "is_read"),
+        Index("ix_notifications_created_at", "created_at"),
+    )
+
+
+class NotificationPreference(Base):
+    """User notification preferences."""
+
+    __tablename__ = "notification_preferences"
+
+    id: Mapped[int] = mapped_column(_ID, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(_ID, nullable=False, unique=True)
+    email_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+    slack_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    discord_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    pr_comments: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+    pr_mentions: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+    issue_comments: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+    issue_mentions: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+    review_requests: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+    digest_frequency: Mapped[str] = mapped_column(
+        String(16), nullable=False, server_default="weekly"
+    )
+    slack_webhook_url: Mapped[Optional[str]] = mapped_column(Text)
+    discord_webhook_url: Mapped[Optional[str]] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+
+    __table_args__ = (
+        Index("ix_notification_preferences_user_id", "user_id"),
+    )
+
+
+class NotificationLog(Base):
+    """Log of notification deliveries for auditing."""
+
+    __tablename__ = "notification_logs"
+
+    id: Mapped[int] = mapped_column(_ID, primary_key=True, autoincrement=True)
+    notification_id: Mapped[int] = mapped_column(_ID, nullable=False)
+    channel: Mapped[str] = mapped_column(String(32), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    error_message: Mapped[Optional[str]] = mapped_column(Text)
+    delivered_at: Mapped[Optional[datetime]] = mapped_column()
+    created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
+
+    __table_args__ = (
+        Index("ix_notification_logs_notification_id", "notification_id"),
+        Index("ix_notification_logs_status", "status"),
+    )
+
+
 # Backward-compatible aliases removed — use ApiAccount / ApiTransaction to avoid
 # SQLAlchemy mapper name collisions with astroml.db.schema.

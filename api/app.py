@@ -1,14 +1,15 @@
 """AstroML REST API — main FastAPI application.
 
 Wires together all routers:
-  - /api/v1/transactions  (Issue #248)
-  - /api/v1/fraud/*       (Issue #254)
-  - /api/v1/accounts/*    (Issue #247)
-  - /api/v1/monitoring/*  (Issue #256)
-  - /api/v1/loyalty/*     (Issue #255)
-  - /api/v1/models/*      (Issue #237)
-  - /api/v1/auth/*        (Issue #240)
-  - /api/v1/ws/*          (Issue #239)
+  - /api/v1/transactions      (Issue #248)
+  - /api/v1/fraud/*           (Issue #254)
+  - /api/v1/accounts/*        (Issue #247)
+  - /api/v1/monitoring/*      (Issue #256)
+  - /api/v1/loyalty/*         (Issue #255)
+  - /api/v1/models/*          (Issue #237)
+  - /api/v1/auth/*            (Issue #240)
+  - /api/v1/ws/*              (Issue #239)
+  - /api/v1/mentorship/*      (Contributors)
 
 Usage
 -----
@@ -32,8 +33,10 @@ from api.routers import (
     auth_router,
     fraud_router,
     loyalty_router,
+    mentorship_router,
     models_router,
     monitoring_router,
+    notifications_router,
     transactions_router,
     ws_router,
 )
@@ -125,6 +128,8 @@ app.include_router(accounts_router)
 app.include_router(monitoring_router)
 app.include_router(loyalty_router)
 app.include_router(models_router)
+app.include_router(mentorship_router)
+app.include_router(notifications_router)
 app.include_router(ws_router)
 
 
