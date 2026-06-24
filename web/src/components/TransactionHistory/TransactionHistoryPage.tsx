@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTransactionHistory } from '../../hooks/useTransactionHistory'
 import { TransactionHistoryTable } from './TransactionHistoryTable'
+import { SkeletonTransactionHistory } from '../Skeletons'
 
 export function TransactionHistoryPage() {
   const [page, setPage] = useState(0)
@@ -22,6 +23,8 @@ export function TransactionHistoryPage() {
     }))
     setPage(0) // Reset to first page when filters change
   }
+
+  if (loading) return <SkeletonTransactionHistory />
 
   return (
     <div style={{ display: 'grid', gap: 24 }}>
