@@ -51,12 +51,12 @@ export const VirtualizedTooltip = memo(function VirtualizedTooltip({
 // ---------------------------------------------------------------------------
 
 const containerStyle: React.CSSProperties = {
-  background: '#fff',
-  border: '1px solid #e2e8f0',
+  background: 'var(--bg-card, #fff)',
+  border: '1px solid var(--border-color, #e2e8f0)',
   borderRadius: 6,
   padding: '8px 12px',
   fontSize: 12,
-  boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
+  boxShadow: 'var(--shadow-md, 0 2px 8px rgba(0,0,0,0.10))',
   pointerEvents: 'none',
   maxWidth: 220,
 }
@@ -64,7 +64,7 @@ const containerStyle: React.CSSProperties = {
 const labelStyle: React.CSSProperties = {
   fontWeight: 600,
   marginBottom: 4,
-  color: '#4a5568',
+  color: 'var(--text-secondary, #4a5568)',
 }
 
 const rowStyle: React.CSSProperties = {
@@ -82,11 +82,11 @@ const dotStyle: React.CSSProperties = {
 }
 
 const nameStyle: React.CSSProperties = {
-  color: '#718096',
+  color: 'var(--text-muted, #718096)',
   flexShrink: 0,
 }
 
 const valueStyle: React.CSSProperties = {
   fontWeight: 600,
-  color: '#1a202c',
+  color: 'var(--text-primary, #1a202c)',
 }

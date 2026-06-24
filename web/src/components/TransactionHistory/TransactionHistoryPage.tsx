@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTransactionHistory } from '../../hooks/useTransactionHistory'
 import { TransactionHistoryTable } from './TransactionHistoryTable'
+import { ExportToolbar } from '../ExportButton'
 
 export function TransactionHistoryPage() {
   const [page, setPage] = useState(0)
@@ -25,41 +26,55 @@ export function TransactionHistoryPage() {
 
   return (
     <div style={{ display: 'grid', gap: 24 }}>
-      <div>
-        <h1 style={{ margin: '0 0 16px 0', fontSize: 28, fontWeight: 700 }}>Transaction History</h1>
-        <p style={{ margin: 0, color: '#666' }}>
-          View and search Stellar blockchain transactions
-        </p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
+        <div>
+          <h1 style={{ margin: '0 0 16px 0', fontSize: 28, fontWeight: 700 }}>Transaction History</h1>
+          <p style={{ margin: 0, color: 'var(--text-muted, #666)' }}>
+            View and search Stellar blockchain transactions
+          </p>
+        </div>
+        <ExportToolbar
+          dataType="transactions"
+          filters={{
+            sourceAccount: filters.sourceAccount,
+            operationType: filters.operationType,
+            startDate: filters.startDate,
+            endDate: filters.endDate,
+          }}
+          large={false}
+        />
       </div>
 
       <div style={{
         padding: 16,
-        backgroundColor: '#f9f9f9',
+        backgroundColor: 'var(--bg-secondary, #f9f9f9)',
         borderRadius: 8,
-        border: '1px solid #e0e0e0',
+        border: '1px solid var(--border-color, #e0e0e0)',
       }}>
         <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
           <div>
-            <label style={{ display: 'block', marginBottom: 4, fontSize: 13, fontWeight: 600, color: '#555' }}>
+            <label style={{ display: 'block', marginBottom: 4, fontSize: 13, fontWeight: 600, color: 'var(--text-secondary, #555)' }}>
               Source Account
             </label>
             <input
               type="text"
               placeholder="G..."
               value={filters.sourceAccount || ''}
-              onChange={(e) => handleFilterChange('sourceAccount', e.target.value)}
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                border: '1px solid #ddd',
-                borderRadius: 4,
-                fontSize: 14,
-              }}
+                onChange={(e) => handleFilterChange('sourceAccount', e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  border: '1px solid var(--border-color, #ddd)',
+                  borderRadius: 4,
+                  fontSize: 14,
+                  background: 'var(--bg-primary, #fff)',
+                  color: 'var(--text-primary, #1a202c)',
+                }}
             />
           </div>
 
           <div>
-            <label style={{ display: 'block', marginBottom: 4, fontSize: 13, fontWeight: 600, color: '#555' }}>
+            <label style={{ display: 'block', marginBottom: 4, fontSize: 13, fontWeight: 600, color: 'var(--text-secondary, #555)' }}>
               Operation Type
             </label>
             <select
@@ -68,9 +83,11 @@ export function TransactionHistoryPage() {
               style={{
                 width: '100%',
                 padding: '8px 12px',
-                border: '1px solid #ddd',
+                border: '1px solid var(--border-color, #ddd)',
                 borderRadius: 4,
                 fontSize: 14,
+                background: 'var(--bg-primary, #fff)',
+                color: 'var(--text-primary, #1a202c)',
               }}
             >
               <option value="">All Types</option>
@@ -83,38 +100,42 @@ export function TransactionHistoryPage() {
           </div>
 
           <div>
-            <label style={{ display: 'block', marginBottom: 4, fontSize: 13, fontWeight: 600, color: '#555' }}>
+            <label style={{ display: 'block', marginBottom: 4, fontSize: 13, fontWeight: 600, color: 'var(--text-secondary, #555)' }}>
               Start Date
             </label>
             <input
               type="date"
               value={filters.startDate || ''}
-              onChange={(e) => handleFilterChange('startDate', e.target.value)}
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                border: '1px solid #ddd',
-                borderRadius: 4,
-                fontSize: 14,
-              }}
+                onChange={(e) => handleFilterChange('startDate', e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  border: '1px solid var(--border-color, #ddd)',
+                  borderRadius: 4,
+                  fontSize: 14,
+                  background: 'var(--bg-primary, #fff)',
+                  color: 'var(--text-primary, #1a202c)',
+                }}
             />
           </div>
 
           <div>
-            <label style={{ display: 'block', marginBottom: 4, fontSize: 13, fontWeight: 600, color: '#555' }}>
+            <label style={{ display: 'block', marginBottom: 4, fontSize: 13, fontWeight: 600, color: 'var(--text-secondary, #555)' }}>
               End Date
             </label>
             <input
               type="date"
               value={filters.endDate || ''}
-              onChange={(e) => handleFilterChange('endDate', e.target.value)}
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                border: '1px solid #ddd',
-                borderRadius: 4,
-                fontSize: 14,
-              }}
+                onChange={(e) => handleFilterChange('endDate', e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  border: '1px solid var(--border-color, #ddd)',
+                  borderRadius: 4,
+                  fontSize: 14,
+                  background: 'var(--bg-primary, #fff)',
+                  color: 'var(--text-primary, #1a202c)',
+                }}
             />
           </div>
         </div>
@@ -124,8 +145,8 @@ export function TransactionHistoryPage() {
             onClick={() => setFilters({})}
             style={{
               padding: '6px 12px',
-              backgroundColor: '#6c757d',
-              color: 'white',
+              background: 'var(--text-muted, #6c757d)',
+              color: '#fff',
               border: 'none',
               borderRadius: 4,
               cursor: 'pointer',
@@ -146,7 +167,7 @@ export function TransactionHistoryPage() {
       />
 
       {history && (
-        <div style={{ fontSize: 13, color: '#666', textAlign: 'center' }}>
+        <div style={{ fontSize: 13, color: 'var(--text-secondary, #666)', textAlign: 'center' }}>
           Showing {Math.min((page + 1) * pageSize, history.total)} of {history.total} transactions
         </div>
       )}

@@ -63,7 +63,7 @@ export const FraudDetectionPanel = memo(function FraudDetectionPanel() {
           { label: 'Low Risk', value: data.lowRisk, color: '#38a169' },
         ].map((s) => (
           <div key={s.label} style={statCard}>
-            <div style={{ fontSize: 12, color: '#718096' }}>{s.label}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted, #718096)' }}>{s.label}</div>
             <div style={{ fontSize: 28, fontWeight: 700, color: s.color }}>{s.value}</div>
           </div>
         ))}
@@ -150,11 +150,11 @@ export const FraudDetectionPanel = memo(function FraudDetectionPanel() {
 })
 
 const statCard: React.CSSProperties = {
-  border: '1px solid #eee',
+  border: '1px solid var(--border-light, #eee)',
   borderRadius: 8,
   padding: '10px 16px',
-  background: '#fff',
+  background: 'var(--bg-card, #fff)',
   minWidth: 100,
 }
-const th: React.CSSProperties = { textAlign: 'left', borderBottom: '1px solid #ddd', padding: '6px 8px' }
-const td: React.CSSProperties = { borderBottom: '1px solid #f1f1f1', padding: '6px 8px' }
+const th: React.CSSProperties = { textAlign: 'left', borderBottom: '1px solid var(--border-color, #ddd)', padding: '6px 8px' }
+const td: React.CSSProperties = { borderBottom: '1px solid var(--border-light, #f1f1f1)', padding: '6px 8px' }

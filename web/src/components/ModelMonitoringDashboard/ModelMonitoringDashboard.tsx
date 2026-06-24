@@ -16,6 +16,7 @@ import { get } from '../../api/client'
 import { ApiError } from '../../api/client'
 import { VirtualizedTooltip } from '../charts/VirtualizedTooltip'
 import { createChartConfig, sampleData, CHART_TARGET_POINTS } from '../../lib/chartUtils'
+import { ExportToolbar } from '../ExportButton'
 
 interface MonitoringMetrics {
   accuracy: number
@@ -28,6 +29,7 @@ interface PerformancePoint {
   date: string
   accuracy: number
   drift: number
+  [key: string]: number | string
 }
 
 interface MonitoringResponse {
@@ -100,6 +102,11 @@ export const ModelMonitoringDashboard = memo(function ModelMonitoringDashboard()
 
   return (
     <section style={{ display: 'grid', gap: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h2 style={{ margin: 0 }}>Model Performance</h2>
+        <ExportToolbar dataType="predictions" />
+      </div>
+
       <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
         {metrics.map((metric) => (
           <div
@@ -107,14 +114,14 @@ export const ModelMonitoringDashboard = memo(function ModelMonitoringDashboard()
             style={{
               padding: 20,
               borderRadius: 16,
-              background: '#fff',
-              boxShadow: '0 2px 14px rgba(0, 0, 0, 0.06)',
-              border: '1px solid #ececec',
+              background: 'var(--bg-card, #fff)',
+              boxShadow: 'var(--shadow-md, 0 2px 14px rgba(0, 0, 0, 0.06))',
+              border: '1px solid var(--card-border, #ececec)',
             }}
           >
-            <p style={{ margin: 0, fontSize: 14, color: '#666' }}>{metric.label}</p>
+            <p style={{ margin: 0, fontSize: 14, color: 'var(--text-secondary, #666)' }}>{metric.label}</p>
             <p style={{ margin: '12px 0', fontSize: 28, fontWeight: 700 }}>{metric.value}</p>
-            <p style={{ margin: 0, fontSize: 12, color: '#888' }}>{metric.description}</p>
+            <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted, #888)' }}>{metric.description}</p>
           </div>
         ))}
       </div>
@@ -125,15 +132,15 @@ export const ModelMonitoringDashboard = memo(function ModelMonitoringDashboard()
             minHeight: 320,
             padding: 20,
             borderRadius: 16,
-            background: '#fff',
-            boxShadow: '0 2px 14px rgba(0, 0, 0, 0.06)',
-            border: '1px solid #ececec',
+            background: 'var(--bg-card, #fff)',
+            boxShadow: 'var(--shadow-md, 0 2px 14px rgba(0, 0, 0, 0.06))',
+            border: '1px solid var(--card-border, #ececec)',
           }}
         >
           <h2 style={{ marginTop: 0 }}>Prediction Accuracy Trend</h2>
           <ResponsiveContainer width="100%" height={240}>
             <LineChart data={performanceData} {...chartConfig}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color, #f0f0f0)" />
               <XAxis dataKey="date" tick={{ fontSize: 12 }} />
               <YAxis domain={[0.7, 1.0]} tickFormatter={accuracyFormatter} />
               <Tooltip content={<VirtualizedTooltip formatter={accuracyFormatter} />} />
@@ -154,15 +161,15 @@ export const ModelMonitoringDashboard = memo(function ModelMonitoringDashboard()
             minHeight: 320,
             padding: 20,
             borderRadius: 16,
-            background: '#fff',
-            boxShadow: '0 2px 14px rgba(0, 0, 0, 0.06)',
-            border: '1px solid #ececec',
+            background: 'var(--bg-card, #fff)',
+            boxShadow: 'var(--shadow-md, 0 2px 14px rgba(0, 0, 0, 0.06))',
+            border: '1px solid var(--card-border, #ececec)',
           }}
         >
           <h2 style={{ marginTop: 0 }}>Drift Detection</h2>
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={performanceData} {...chartConfig}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color, #f0f0f0)" />
               <XAxis dataKey="date" tick={{ fontSize: 12 }} />
               <YAxis tickFormatter={driftFormatter} />
               <Tooltip content={<VirtualizedTooltip formatter={driftFormatter} />} />
@@ -170,7 +177,7 @@ export const ModelMonitoringDashboard = memo(function ModelMonitoringDashboard()
               <Bar dataKey="drift" fill="#f65d5d" radius={[8, 8, 0, 0]} isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
-          <p style={{ marginTop: 12, fontSize: 14, color: '#555' }}>
+          <p style={{ marginTop: 12, fontSize: 14, color: 'var(--text-secondary, #555)' }}>
             Overall model drift is moderate. Watch for sudden deviations in feature distributions.
           </p>
         </div>

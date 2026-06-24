@@ -10,6 +10,7 @@ import { TierComparisonChart } from './TierComparisonChart'
 import { ReferralInviteSection } from './ReferralInviteSection'
 import { RealTimeTransactionsChart } from './RealTimeTransactionsChart'
 import { FraudDetectionPanel } from './FraudDetectionPanel'
+import { GraphVisualization } from '../GraphVisualization'
 
 export function LoyaltyDashboard() {
   const { data: summary, isLoading: loadingSummary } = useLoyaltySummary()
@@ -33,11 +34,11 @@ export function LoyaltyDashboard() {
     <div style={{ display: 'grid', gap: 16 }}>
       <section style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
         <div>
-          <div style={{ fontSize: 18, color: '#555' }}>Current Tier</div>
+          <div style={{ fontSize: 18, color: 'var(--text-secondary, #555)' }}>Current Tier</div>
           <div style={{ fontSize: 28, fontWeight: 700, color: summary.currentTier.color }}>{summary.currentTier.name}</div>
         </div>
         <div>
-          <div style={{ fontSize: 18, color: '#555' }}>Points Balance</div>
+          <div style={{ fontSize: 18, color: 'var(--text-secondary, #555)' }}>Points Balance</div>
           <div style={{ fontSize: 28, fontWeight: 700 }}>{summary.pointsBalance.toLocaleString()}</div>
         </div>
         <TierProgress currentTier={summary.currentTier} nextTier={summary.nextTier} />
@@ -61,6 +62,10 @@ export function LoyaltyDashboard() {
 
       <section>
         <RealTimeTransactionsChart />
+      </section>
+
+      <section>
+        <GraphVisualization />
       </section>
 
       <section>

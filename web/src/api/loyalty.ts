@@ -160,17 +160,7 @@ export function subscribeToIncomingTransactions(listener: IncomingTransactionLis
       try {
         const msg = JSON.parse(event.data)
         if (msg.type === 'transaction' && msg.data) {
-          listener({
-            hash: msg.data.hash,
-            ledgerSequence: msg.data.ledgerSequence,
-            sourceAccount: msg.data.sourceAccount,
-            destinationAccount: msg.data.destinationAccount,
-            amount: msg.data.amount,
-            assetCode: msg.data.assetCode,
-            fee: msg.data.fee,
-            successful: msg.data.successful,
-            createdAt: msg.data.createdAt,
-          })
+          listener(msg.data as StellarTransaction)
         } else if (msg.type === 'ping') {
           ws?.send('pong')
         }

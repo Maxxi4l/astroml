@@ -30,9 +30,9 @@ export function PointsRedemptionPanel({ balance, onRedeem, pending }: { balance:
           disabled={pending}
         />
         <button onClick={submit} disabled={pending}>Redeem</button>
-        <div style={{ color: '#555' }}>Available: {balance.toLocaleString()}</div>
+        <div style={{ color: 'var(--text-secondary, #555)' }}>Available: {balance.toLocaleString()}</div>
       </div>
-      {error && <div style={{ color: 'crimson', marginTop: 8 }}>{error}</div>}
+      {error && <div style={{ color: '#e53e3e', marginTop: 8 }}>{error}</div>}
     </div>
   )
 }

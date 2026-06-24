@@ -146,8 +146,8 @@ const containerStyle: React.CSSProperties = {
   padding: '40px 24px',
   margin: '16px 0',
   borderRadius: 12,
-  background: '#fff8f8',
-  border: '1px solid #fed7d7',
+  background: 'var(--bg-card, #fff8f8)',
+  border: '1px solid var(--border-color, #fed7d7)',
   textAlign: 'center',
   maxWidth: 520,
   marginLeft: 'auto',
@@ -163,13 +163,13 @@ const headingStyle: React.CSSProperties = {
   margin: '0 0 8px',
   fontSize: 18,
   fontWeight: 700,
-  color: '#c53030',
+  color: 'var(--text-primary, #c53030)',
 }
 
 const bodyStyle: React.CSSProperties = {
   margin: '0 0 16px',
   fontSize: 14,
-  color: '#4a5568',
+  color: 'var(--text-secondary, #4a5568)',
   lineHeight: 1.6,
 }
 
@@ -182,21 +182,21 @@ const detailsStyle: React.CSSProperties = {
 const summaryStyle: React.CSSProperties = {
   cursor: 'pointer',
   fontSize: 12,
-  color: '#718096',
+  color: 'var(--text-muted, #718096)',
   userSelect: 'none',
 }
 
 const preStyle: React.CSSProperties = {
   marginTop: 8,
   padding: '8px 12px',
-  background: '#fff5f5',
-  border: '1px solid #fed7d7',
+  background: 'var(--bg-secondary, #fff5f5)',
+  border: '1px solid var(--border-color, #fed7d7)',
   borderRadius: 6,
   fontSize: 11,
   overflowX: 'auto',
   whiteSpace: 'pre-wrap',
   wordBreak: 'break-word',
-  color: '#c53030',
+  color: 'var(--text-primary, #c53030)',
 }
 
 const actionsStyle: React.CSSProperties = {
@@ -223,6 +223,6 @@ const primaryButtonStyle: React.CSSProperties = {
 
 const secondaryButtonStyle: React.CSSProperties = {
   ...baseButtonStyle,
-  background: '#edf2f7',
-  color: '#2d3748',
+  background: 'var(--bg-secondary, #edf2f7)',
+  color: 'var(--text-primary, #2d3748)',
 }

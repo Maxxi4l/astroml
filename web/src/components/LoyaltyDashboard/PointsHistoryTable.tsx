@@ -60,5 +60,5 @@ export function PointsHistoryTable({
   )
 }
 
-const th: React.CSSProperties = { textAlign: 'left', borderBottom: '1px solid #ddd', padding: 8 }
-const td: React.CSSProperties = { borderBottom: '1px solid #f1f1f1', padding: 8 }
+const th: React.CSSProperties = { textAlign: 'left', borderBottom: '1px solid var(--border-color, #ddd)', padding: 8 }
+const td: React.CSSProperties = { borderBottom: '1px solid var(--border-light, #f1f1f1)', padding: 8 }

@@ -8,7 +8,7 @@ export function TierBenefitsCard({ benefits }: { benefits: Benefit[] }) {
         {benefits.map((b) => (
           <div key={b.id} style={card}>
             <div style={{ fontWeight: 600 }}>{b.title}</div>
-            <div style={{ color: '#555', fontSize: 14 }}>{b.description}</div>
+            <div style={{ color: 'var(--text-secondary, #555)', fontSize: 14 }}>{b.description}</div>
           </div>
         ))}
       </div>
@@ -17,9 +17,9 @@ export function TierBenefitsCard({ benefits }: { benefits: Benefit[] }) {
 }
 
 const card: React.CSSProperties = {
-  border: '1px solid #eee',
+  border: '1px solid var(--border-light, #eee)',
   borderRadius: 8,
   padding: 12,
-  background: '#fff',
+  background: 'var(--bg-card, #fff)',
   boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
 }

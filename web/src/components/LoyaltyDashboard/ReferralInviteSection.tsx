@@ -33,7 +33,7 @@ export function ReferralInviteSection() {
         <input style={{ minWidth: 260 }} value={url} readOnly />
         <button onClick={copy}>Copy</button>
         <button onClick={share}>Share</button>
-        <div style={{ color: '#555' }}>
+        <div style={{ color: 'var(--text-secondary, #555)' }}>
           Invited: {data?.invited ?? 0} • Rewards: {data?.rewards ?? 0}
         </div>
       </div>

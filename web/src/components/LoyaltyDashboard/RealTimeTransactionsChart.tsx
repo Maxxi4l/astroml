@@ -56,7 +56,7 @@ export const RealTimeTransactionsChart = memo(function RealTimeTransactionsChart
         }}
       >
         <h2 style={{ margin: '8px 0' }}>Live Stellar Transactions</h2>
-        <div style={{ color: '#555', fontSize: 14 }}>
+        <div style={{ color: 'var(--text-secondary, #555)', fontSize: 14 }}>
           {latest
             ? `Latest: ${latest.amount.toFixed(2)} XLM from ${latest.sourceAccount}`
             : 'Waiting for stream...'}

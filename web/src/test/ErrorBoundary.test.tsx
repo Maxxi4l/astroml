@@ -108,10 +108,8 @@ describe('ErrorBoundary', () => {
       </ErrorBoundary>
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /try again/i }))
+    fireEvent.click(screen.getByRole('button', { name: /retry loading/i }))
 
-    // After reset the boundary re-renders children; Bomb still throws,
-    // so the error UI reappears — the important thing is the click works.
     expect(screen.getByRole('alert')).toBeInTheDocument()
   })
 
