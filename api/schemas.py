@@ -125,8 +125,12 @@ class LoyaltySummaryOut(BaseModel):
 
 class ModelMetricsOut(BaseModel):
     accuracy: Optional[float] = None
+    precision: Optional[float] = None
+    recall: Optional[float] = None
     f1: Optional[float] = None
+    f1_score: Optional[float] = None   # alias populated from f1 for compatibility
     auc: Optional[float] = None
+    auc_roc: Optional[float] = None    # alias populated from auc for compatibility
     drift_score: Optional[float] = None
     recorded_at: Optional[datetime] = None
 
@@ -134,6 +138,8 @@ class ModelMetricsOut(BaseModel):
 class PerformancePoint(BaseModel):
     date: str
     accuracy: Optional[float] = None
+    precision: Optional[float] = None
+    recall: Optional[float] = None
     f1: Optional[float] = None
     auc: Optional[float] = None
 

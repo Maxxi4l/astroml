@@ -47,10 +47,16 @@ def _load_latest_metrics() -> ModelMetricsOut:
                 data = json.load(f)
             metrics = data.get("metrics") or data.get("best_metrics") or {}
             if metrics:
+                f1_val = metrics.get("f1") or metrics.get("f1_score")
+                auc_val = metrics.get("auc") or metrics.get("auc_roc")
                 return ModelMetricsOut(
                     accuracy=metrics.get("accuracy"),
-                    f1=metrics.get("f1"),
-                    auc=metrics.get("auc"),
+                    precision=metrics.get("precision"),
+                    recall=metrics.get("recall"),
+                    f1=f1_val,
+                    f1_score=f1_val,
+                    auc=auc_val,
+                    auc_roc=auc_val,
                     drift_score=None,
                     recorded_at=datetime.fromtimestamp(os.path.getmtime(path), tz=timezone.utc),
                 )
