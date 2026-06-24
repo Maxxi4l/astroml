@@ -16,6 +16,7 @@ import { get } from '../../api/client'
 import { ApiError } from '../../api/client'
 import { VirtualizedTooltip } from '../charts/VirtualizedTooltip'
 import { createChartConfig, sampleData, CHART_TARGET_POINTS } from '../../lib/chartUtils'
+import { SkeletonModelMonitoring } from '../Skeletons'
 
 interface MonitoringMetrics {
   accuracy: number
@@ -87,7 +88,7 @@ export const ModelMonitoringDashboard = memo(function ModelMonitoringDashboard()
     [data]
   )
 
-  if (isLoading) return <div>Loading monitoring data...</div>
+  if (isLoading) return <SkeletonModelMonitoring />
   if (error) return <div>Error loading monitoring data: {(error as Error).message}</div>
   if (!data) return <div>No monitoring data available</div>
 
