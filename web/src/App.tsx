@@ -1,5 +1,11 @@
 import { lazy, Suspense } from 'react'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import {
+  SkeletonModelMonitoring,
+  SkeletonLoyaltyDashboard,
+  SkeletonTransactionHistory,
+} from './components/Skeletons'
+import './styles/skeleton.css'
 
 // Lazy-load each dashboard section so the initial bundle is smaller and the
 // browser can start rendering the first panel before the others are parsed.
@@ -17,20 +23,12 @@ const TransactionHistoryPage = lazy(() =>
   import('./components/TransactionHistory').then((m) => ({ default: m.TransactionHistoryPage }))
 )
 
-function SectionFallback({ label }: { label: string }) {
-  return (
-    <div style={{ padding: 24, color: '#888', fontSize: 14 }}>
-      Loading {label}…
-    </div>
-  )
-}
-
 export default function App() {
   return (
     <div style={{ fontFamily: 'system-ui, sans-serif', padding: 16, maxWidth: 1200, margin: '0 auto' }}>
       <h1>Model Performance Monitoring</h1>
       <ErrorBoundary boundary="Model Monitoring">
-        <Suspense fallback={<SectionFallback label="Model Monitoring" />}>
+        <Suspense fallback={<SkeletonModelMonitoring />}>
           <ModelMonitoringDashboard />
         </Suspense>
       </ErrorBoundary>
@@ -39,7 +37,7 @@ export default function App() {
 
       <h1>Loyalty Dashboard</h1>
       <ErrorBoundary boundary="Loyalty Dashboard">
-        <Suspense fallback={<SectionFallback label="Loyalty Dashboard" />}>
+        <Suspense fallback={<SkeletonLoyaltyDashboard />}>
           <LoyaltyDashboard />
         </Suspense>
       </ErrorBoundary>
@@ -48,7 +46,7 @@ export default function App() {
 
       <h1>Transaction History</h1>
       <ErrorBoundary boundary="Transaction History">
-        <Suspense fallback={<SectionFallback label="Transaction History" />}>
+        <Suspense fallback={<SkeletonTransactionHistory />}>
           <TransactionHistoryPage />
         </Suspense>
       </ErrorBoundary>
