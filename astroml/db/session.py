@@ -27,6 +27,10 @@ class DatabaseConfig(BaseModel):
     name: str = Field(default="astroml", min_length=1, description="Database name")
     user: str = Field(default="astroml", min_length=1, description="Database user")
     password: str = Field(default="", description="Database password")
+    pool_size: int = Field(default=10, description="Connection pool size")
+    max_overflow: int = Field(default=20, description="Max overflow connections")
+    pool_timeout: int = Field(default=30, description="Pool timeout seconds")
+    pool_recycle: int = Field(default=1800, description="Pool connection recycle seconds")
     
     @field_validator("host")
     @classmethod
@@ -114,6 +118,10 @@ def _database_yaml_template() -> str:
         "  name: astroml              # non-empty string\n"
         "  user: astroml              # non-empty string\n"
         "  password: \"\"               # string, may be empty\n"
+        "  pool_size: 10              # int\n"
+        "  max_overflow: 20           # int\n"
+        "  pool_timeout: 30           # int\n"
+        "  pool_recycle: 1800         # int\n"
     )
 
 
@@ -143,7 +151,25 @@ def resolve_database_url() -> str:
 @lru_cache(maxsize=1)
 def get_engine() -> Engine:
     """Return a cached SQLAlchemy engine."""
-    return create_engine(resolve_database_url(), pool_pre_ping=True)
+    try:
+        config = load_database_config()
+        return create_engine(
+            resolve_database_url(), 
+            pool_pre_ping=True,
+            pool_size=config.pool_size,
+            max_overflow=config.max_overflow,
+            pool_timeout=config.pool_timeout,
+            pool_recycle=config.pool_recycle
+        )
+    except Exception:
+        return create_engine(
+            resolve_database_url(), 
+            pool_pre_ping=True,
+            pool_size=10,
+            max_overflow=20,
+            pool_timeout=30,
+            pool_recycle=1800
+        )
 
 
 def get_session() -> Session:

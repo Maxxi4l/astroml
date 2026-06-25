@@ -37,12 +37,50 @@ def _sync_url() -> str:
 
 @lru_cache(maxsize=1)
 def _async_engine():
-    return create_async_engine(_async_url(), pool_pre_ping=True)
+    try:
+        from astroml.db.session import load_database_config
+        config = load_database_config()
+        return create_async_engine(
+            _async_url(), 
+            pool_pre_ping=True,
+            pool_size=config.pool_size,
+            max_overflow=config.max_overflow,
+            pool_timeout=config.pool_timeout,
+            pool_recycle=config.pool_recycle
+        )
+    except Exception:
+        return create_async_engine(
+            _async_url(), 
+            pool_pre_ping=True,
+            pool_size=10,
+            max_overflow=20,
+            pool_timeout=30,
+            pool_recycle=1800
+        )
 
 
 @lru_cache(maxsize=1)
 def _sync_engine():
-    return create_engine(_sync_url(), pool_pre_ping=True)
+    try:
+        from astroml.db.session import load_database_config
+        config = load_database_config()
+        return create_engine(
+            _sync_url(), 
+            pool_pre_ping=True,
+            pool_size=config.pool_size,
+            max_overflow=config.max_overflow,
+            pool_timeout=config.pool_timeout,
+            pool_recycle=config.pool_recycle
+        )
+    except Exception:
+        return create_engine(
+            _sync_url(), 
+            pool_pre_ping=True,
+            pool_size=10,
+            max_overflow=20,
+            pool_timeout=30,
+            pool_recycle=1800
+        )
 
 
 def reset_engines() -> None:
