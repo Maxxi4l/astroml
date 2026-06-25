@@ -24,5 +24,14 @@ python-cors==1.0.0
 # HTTP Client
 httpx==0.25.2
 
+# Observability - OpenTelemetry (issue #336)
+opentelemetry-api==1.21.0
+opentelemetry-sdk==1.21.0
+opentelemetry-instrumentation-fastapi==0.42b0
+opentelemetry-instrumentation-sqlalchemy==0.42b0
+opentelemetry-instrumentation-httpx==0.42b0
+opentelemetry-exporter-jaeger==1.21.0
+opentelemetry-exporter-zipkin==1.21.0
+
 # Utilities
 python-dotenv==1.0.0

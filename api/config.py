@@ -30,5 +30,14 @@ class Settings(BaseSettings):
     # Logging
     log_level: str = "INFO"
 
+    # Distributed Tracing (issue #336)
+    tracing_enabled: bool = False
+    tracing_exporter: str = "jaeger"  # jaeger|zipkin|console
+    tracing_sample_rate: float = 0.1  # 10% sampling by default
+    jaeger_agent_host: str = "localhost"
+    jaeger_agent_port: int = 6831
+    zipkin_endpoint: str = "http://localhost:9411/api/v2/spans"
+    service_name: str = "astroml-api"
+
 
 settings = Settings()

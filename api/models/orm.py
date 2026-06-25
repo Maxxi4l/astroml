@@ -501,5 +501,40 @@ class FAQSuggestion(Base):
     )
 
 
+# ---------------------------------------------------------------------------
+# Audit Log (issue #332)
+# ---------------------------------------------------------------------------
+
+class AuditLog(Base):
+    """Immutable audit log for sensitive API operations."""
+
+    __tablename__ = "audit_logs"
+
+    id: Mapped[int] = mapped_column(_ID, primary_key=True, autoincrement=True)
+    timestamp: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
+    user_id: Mapped[Optional[int]] = mapped_column(_ID)  # NULL for system events
+    username: Mapped[Optional[str]] = mapped_column(String(64))
+    auth_type: Mapped[Optional[str]] = mapped_column(String(16))  # jwt|api_key|none
+    action: Mapped[str] = mapped_column(String(64), nullable=False)  # login|logout|create|update|delete
+    resource_type: Mapped[Optional[str]] = mapped_column(String(64))  # user|account|transaction|model
+    resource_id: Mapped[Optional[str]] = mapped_column(String(256))
+    ip_address: Mapped[Optional[str]] = mapped_column(String(45))  # IPv6 support
+    user_agent: Mapped[Optional[str]] = mapped_column(String(512))
+    request_path: Mapped[Optional[str]] = mapped_column(String(512))
+    request_method: Mapped[Optional[str]] = mapped_column(String(8))
+    status_code: Mapped[Optional[int]] = mapped_column(Integer)
+    details: Mapped[Optional[dict]] = mapped_column(
+        JSON().with_variant(JSONB(), "postgresql")
+    )
+
+    __table_args__ = (
+        Index("ix_audit_logs_timestamp", "timestamp"),
+        Index("ix_audit_logs_user_id", "user_id"),
+        Index("ix_audit_logs_action", "action"),
+        Index("ix_audit_logs_resource_type", "resource_type"),
+        Index("ix_audit_logs_timestamp_action", "timestamp", "action"),
+    )
+
+
 # Backward-compatible aliases removed — use ApiAccount / ApiTransaction to avoid
 # SQLAlchemy mapper name collisions with astroml.db.schema.
