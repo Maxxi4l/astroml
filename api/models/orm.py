@@ -439,5 +439,67 @@ class NotificationLog(Base):
     )
 
 
+# ---------------------------------------------------------------------------
+# FAQ (issue #307)
+# ---------------------------------------------------------------------------
+
+class FAQ(Base):
+    """FAQ item with categorization and search support."""
+
+    __tablename__ = "faqs"
+
+    id: Mapped[int] = mapped_column(_ID, primary_key=True, autoincrement=True)
+    category: Mapped[str] = mapped_column(String(64), nullable=False)
+    question: Mapped[str] = mapped_column(String(512), nullable=False)
+    answer: Mapped[str] = mapped_column(Text, nullable=False)
+    order: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    is_published: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+    created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+
+    __table_args__ = (
+        Index("ix_faqs_category", "category"),
+        Index("ix_faqs_is_published", "is_published"),
+        Index("ix_faqs_order", "order"),
+    )
+
+
+class FAQFeedback(Base):
+    """User feedback on FAQ helpfulness."""
+
+    __tablename__ = "faq_feedback"
+
+    id: Mapped[int] = mapped_column(_ID, primary_key=True, autoincrement=True)
+    faq_id: Mapped[int] = mapped_column(_ID, nullable=False)
+    is_helpful: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    user_comment: Mapped[Optional[str]] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
+
+    __table_args__ = (
+        Index("ix_faq_feedback_faq_id", "faq_id"),
+    )
+
+
+class FAQSuggestion(Base):
+    """User-submitted FAQ suggestions."""
+
+    __tablename__ = "faq_suggestions"
+
+    id: Mapped[int] = mapped_column(_ID, primary_key=True, autoincrement=True)
+    question: Mapped[str] = mapped_column(String(512), nullable=False)
+    suggested_answer: Mapped[Optional[str]] = mapped_column(Text)
+    category: Mapped[Optional[str]] = mapped_column(String(64))
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, server_default="pending"
+    )  # pending|approved|rejected
+    created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
+
+    __table_args__ = (
+        Index("ix_faq_suggestions_status", "status"),
+    )
+
+
 # Backward-compatible aliases removed — use ApiAccount / ApiTransaction to avoid
 # SQLAlchemy mapper name collisions with astroml.db.schema.

@@ -32,8 +32,11 @@ from api.database import get_async_session_factory
 from api.routers import (
     accounts_router,
     auth_router,
+    backup_router,
+    chat_router,
     contributors_router,
     errors_router,
+    faq_router,
     fraud_router,
     loyalty_router,
     mentorship_router,
@@ -42,6 +45,7 @@ from api.routers import (
     notifications_router,
     onboarding_router,
     transactions_router,
+    validation_router,
     ws_router,
 )
 from api.routers.monitoring import record_latency
@@ -137,6 +141,10 @@ app.include_router(contributors_router)
 app.include_router(mentorship_router)
 app.include_router(notifications_router)
 app.include_router(onboarding_router)
+app.include_router(faq_router)
+app.include_router(validation_router)
+app.include_router(backup_router)
+app.include_router(chat_router)
 app.include_router(ws_router)
 
 

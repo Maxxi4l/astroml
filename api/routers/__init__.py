@@ -1,7 +1,10 @@
 """API routers package."""
 from api.routers.accounts import router as accounts_router
 from api.routers.auth import router as auth_router
+from api.routers.backup import router as backup_router
+from api.routers.chat import router as chat_router
 from api.routers.errors import router as errors_router
+from api.routers.faq import router as faq_router
 from api.routers.fraud import router as fraud_router
 from api.routers.loyalty import router as loyalty_router
 from api.routers.mentorship import router as mentorship_router
@@ -11,13 +14,17 @@ from api.routers.notifications import router as notifications_router
 from api.routers.contributors import router as contributors_router
 from api.routers.transactions import router as transactions_router
 from api.routers.onboarding import router as onboarding_router
+from api.routers.validation import router as validation_router
 from api.routers.ws import router as ws_router
 
 __all__ = [
     "accounts_router",
+    "backup_router",
+    "chat_router",
     "contributors_router",
     "auth_router",
     "errors_router",
+    "faq_router",
     "fraud_router",
     "loyalty_router",
     "mentorship_router",
@@ -26,5 +33,6 @@ __all__ = [
     "notifications_router",
     "onboarding_router",
     "transactions_router",
+    "validation_router",
     "ws_router",
 ]
