@@ -460,3 +460,82 @@ class OnboardingProgressOut(BaseModel):
     is_complete: bool
     started_at: str
     last_updated: str
+
+
+# ─── FAQ (issue #307) ───────────────────────────────────────────────────────────
+
+class FAQOut(BaseModel):
+    id: int
+    category: str
+    question: str
+    answer: str
+    order: int
+    is_published: bool
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class FAQIn(BaseModel):
+    category: str = Field(..., min_length=1, max_length=64)
+    question: str = Field(..., min_length=1, max_length=512)
+    answer: str = Field(..., min_length=1)
+    order: int = Field(default=0, ge=0)
+    is_published: bool = True
+
+
+class FAQUpdateIn(BaseModel):
+    category: Optional[str] = Field(None, min_length=1, max_length=64)
+    question: Optional[str] = Field(None, min_length=1, max_length=512)
+    answer: Optional[str] = Field(None, min_length=1)
+    order: Optional[int] = Field(None, ge=0)
+    is_published: Optional[bool] = None
+
+
+class FAQListResponse(BaseModel):
+    data: List[FAQOut]
+    categories: List[str]
+    total: int
+
+
+class FAQFeedbackIn(BaseModel):
+    is_helpful: bool
+    user_comment: Optional[str] = None
+
+
+class FAQFeedbackOut(BaseModel):
+    id: int
+    faq_id: int
+    is_helpful: bool
+    user_comment: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class FAQSuggestionIn(BaseModel):
+    question: str = Field(..., min_length=1, max_length=512)
+    suggested_answer: Optional[str] = None
+    category: Optional[str] = Field(None, max_length=64)
+
+
+class FAQSuggestionOut(BaseModel):
+    id: int
+    question: str
+    suggested_answer: Optional[str] = None
+    category: Optional[str] = None
+    status: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class FAQSuggestionListResponse(BaseModel):
+    data: List[FAQSuggestionOut]
+    page: int
+    page_size: int
+    total: int

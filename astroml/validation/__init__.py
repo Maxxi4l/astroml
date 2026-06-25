@@ -11,12 +11,14 @@ from __future__ import annotations
 from importlib import import_module
 
 __all__ = [
+    "api_validation",
     "calibration",
     "data_quality",
     "dedupe",
     "hashing",
     "integrity",
     "leakage",
+    "pipeline",
     "validator",
 ]
 
