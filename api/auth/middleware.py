@@ -1,4 +1,4 @@
-"""HTTP auth and rate-limit middleware (issue #240)."""
+"""HTTP auth and rate-limit middleware (issue #240, #331)."""
 from __future__ import annotations
 
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -33,10 +33,17 @@ class AuthMiddleware(BaseHTTPMiddleware):
         finally:
             session.close()
 
-        limit = rate_limiter.limit_for_auth_type(auth.auth_type)
         rate_key = f"{auth.auth_type}:{auth.subject}"
-        if not rate_limiter.is_allowed(rate_key, limit):
-            return JSONResponse(status_code=429, content={"detail": "Rate limit exceeded"})
+        allowed, retry_after = rate_limiter.is_allowed(rate_key, path, auth.auth_type)
+        
+        if not allowed:
+            response = JSONResponse(
+                status_code=429,
+                content={"detail": "Rate limit exceeded", "retry_after": retry_after}
+            )
+            if retry_after is not None:
+                response.headers["Retry-After"] = str(retry_after)
+            return response
 
         request.state.auth = auth
         return await call_next(request)
