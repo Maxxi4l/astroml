@@ -46,3 +46,21 @@ clean:
 	find . -type f -name "*.pyc" -delete
 	rm -rf .pytest_cache .mypy_cache build/ dist/ *.egg-info
 	rm -rf benchmark_results/quickstart .astroml_state_quickstart
+
+install:
+	pip install -e "[dev]"
+
+clean:
+	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+	find . -type f -name "*.pyc" -delete
+	rm -rf .pytest_cache .mypy_cache build/ dist/ *.egg-info
+	rm -rf benchmark_results/quickstart .astroml_state_quickstart
+
+# Dev setup target – start full stack, seed data, run health checks
+.PHONY: dev-setup
+dev-setup:
+	@echo "🚀 Starting local development environment…"
+	@docker compose -f docker-compose.yml up -d --build
+	@./scripts/seed_data.sh
+	@./scripts/health_check.sh
+	@echo "✅ Development environment ready."

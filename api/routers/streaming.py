@@ -18,6 +18,11 @@ router = APIRouter(prefix="/api/v1/streaming", tags=["streaming"])
 class StreamState:
     def __init__(self):
         self.streams: Dict[str, Dict[str, Any]] = {}
+        # Back‑pressure placeholder
+        self.queue_depth: int = 0
+        self.max_queue_depth: int = 1000
+        self.batch_size: int = 100
+        self.memory_pressure: bool = False
         self.last_updated: Optional[float] = None
 
 
@@ -28,6 +33,17 @@ def update_stream_state(stream_id: str, state: Dict[str, Any]) -> None:
     """Update the state for a specific stream. Called by streaming service."""
     _stream_state.streams[stream_id] = state
     _stream_state.last_updated = time.time()
+
+# Retry / back‑off placeholder
+def _apply_retry_backoff(attempt: int) -> None:
+    """Placeholder for retry back‑off logic.
+    * `attempt` – the current retry count (starting at 1).
+    * Sleeps for `base * 2**(attempt-1)` seconds where `base` is 0.5s.
+    """
+    import time
+    base = 0.5
+    delay = base * (2 ** (attempt - 1))
+    time.sleep(delay)
 
 
 class StreamHealth(BaseModel):
