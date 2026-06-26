@@ -11,6 +11,8 @@ import torch
 import torch.nn as nn
 
 from astroml.storage import ArtifactStore, create_artifact_store
+from astroml.db.session import get_session
+from api.models.orm import ModelRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -229,6 +231,129 @@ class MLflowTracker:
             self.log_metric("roc_auc", auc, step=step)
         except Exception as exc:
             logger.warning("Could not compute ROC-AUC: %s", exc)
+
+    def register_model(
+        self,
+        model_name: str,
+        version: str,
+        path: str,
+        owner: Optional[str] = None,
+        tags: Optional[list[str]] = None,
+        status: Optional[str] = "inactive",
+    ) -> Optional[ModelRegistry]:
+        """Register a model version to the model registry.
+        
+        Automatically syncs metrics and parameters from the current MLflow run
+        and stores the mlflow_run_id.
+        
+        Args:
+            model_name: Name of the model
+            version: Version identifier
+            path: Path to model file
+            owner: Optional owner of the model
+            tags: Optional tags for the model
+            status: Optional status (inactive, active, deprecated)
+            
+        Returns:
+            The created ModelRegistry entry if successful, None otherwise
+        """
+        if not self.enabled or self._run is None:
+            logger.warning("MLflow not enabled, skipping model registration")
+            return None
+
+        db = get_session()
+        try:
+            # Sync metrics from MLflow run
+            metrics = {}
+            if self._run.data.metrics:
+                metrics = dict(self._run.data.metrics)
+
+            # Check if model already exists
+            existing = db.query(ModelRegistry).filter(
+                ModelRegistry.name == model_name,
+                ModelRegistry.version == version
+            ).first()
+            if existing:
+                logger.warning(
+                    f"Model {model_name} version {version} already exists, "
+                    f"updating mlflow_run_id and metrics"
+                )
+                existing.mlflow_run_id = self._run.info.run_id
+                existing.metrics = metrics
+                db.commit()
+                db.refresh(existing)
+                return existing
+
+            # Create new model entry
+            entry = ModelRegistry(
+                name=model_name,
+                version=version,
+                path=path,
+                owner=owner,
+                tags=tags,
+                mlflow_run_id=self._run.info.run_id,
+                metrics=metrics,
+                status=status or "inactive",
+            )
+            db.add(entry)
+            db.commit()
+            db.refresh(entry)
+            logger.info(
+                "Model registered | name=%s version=%s mlflow_run_id=%s",
+                model_name,
+                version,
+                self._run.info.run_id
+            )
+            return entry
+        except Exception as e:
+            logger.error(f"Failed to register model: {e}")
+            db.rollback()
+            return None
+        finally:
+            db.close()
+
+    def load_run_metadata(self, model_name: str, version: str) -> Optional[Dict[str, Any]]:
+        """Load MLflow run metadata for a registered model version.
+        
+        Args:
+            model_name: Name of the model
+            version: Version identifier
+            
+        Returns:
+            Run metadata dict if found, None otherwise
+        """
+        if not self.enabled:
+            logger.warning("MLflow not enabled, cannot load run metadata")
+            return None
+
+        db = get_session()
+        try:
+            entry = db.query(ModelRegistry).filter(
+                ModelRegistry.name == model_name,
+                ModelRegistry.version == version
+            ).first()
+            if not entry or not entry.mlflow_run_id:
+                logger.warning(f"No MLflow run ID found for {model_name} v{version}")
+                return None
+
+            # Get run data from MLflow
+            run = self._mlflow.get_run(entry.mlflow_run_id)
+            return {
+                "run_id": run.info.run_id,
+                "experiment_id": run.info.experiment_id,
+                "status": run.info.status,
+                "start_time": run.info.start_time,
+                "end_time": run.info.end_time,
+                "metrics": run.data.metrics,
+                "params": run.data.params,
+                "tags": run.data.tags,
+                "artifact_uri": run.info.artifact_uri,
+            }
+        except Exception as e:
+            logger.error(f"Failed to load run metadata: {e}")
+            return None
+        finally:
+            db.close()
 
     def end(self) -> None:
         """End the active MLflow run."""

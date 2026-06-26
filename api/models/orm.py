@@ -187,6 +187,11 @@ class ModelRegistry(Base):
     name: Mapped[str] = mapped_column(String(128), nullable=False)
     version: Mapped[str] = mapped_column(String(64), nullable=False)
     path: Mapped[str] = mapped_column(Text, nullable=False)
+    owner: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    tags: Mapped[Optional[list]] = mapped_column(
+        JSON().with_variant(JSONB(), "postgresql"), nullable=True
+    )
+    mlflow_run_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     metrics: Mapped[Optional[dict]] = mapped_column(
         JSON().with_variant(JSONB(), "postgresql")
     )
@@ -198,6 +203,10 @@ class ModelRegistry(Base):
     __table_args__ = (
         Index("ix_model_registry_name_version", "name", "version", unique=True),
         Index("ix_model_registry_status", "status"),
+        Index("ix_model_registry_owner", "owner"),
+        Index("ix_model_registry_mlflow_run_id", "mlflow_run_id"),
+        Index("ix_model_registry_name", "name"),
+        Index("ix_model_registry_version", "version"),
     )
 
 
