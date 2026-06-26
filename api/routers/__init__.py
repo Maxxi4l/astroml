@@ -7,6 +7,7 @@ from api.routers.chat import router as chat_router
 from api.routers.contact import router as contact_router
 from api.routers.errors import router as errors_router
 from api.routers.faq import router as faq_router
+from api.routers.feedback import router as feedback_router
 from api.routers.fraud import router as fraud_router
 from api.routers.loyalty import router as loyalty_router
 from api.routers.mentorship import router as mentorship_router
@@ -34,6 +35,7 @@ __all__ = [
     "auth_router",
     "errors_router",
     "faq_router",
+    "feedback_router",
     "fraud_router",
     "loyalty_router",
     "mentorship_router",

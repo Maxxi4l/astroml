@@ -48,5 +48,10 @@ class Settings(BaseSettings):
     contact_email_from: str = "no-reply@astroml.dev"
     contact_support_email: str = "support@astroml.dev"
 
+    # Feedback collection / GitHub integration (issue #308)
+    # When both are set, new feedback opens a GitHub issue in this repo.
+    github_token: str = ""
+    github_repo: str = ""  # "owner/repo"
+
 
 settings = Settings()

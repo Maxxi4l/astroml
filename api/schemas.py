@@ -626,6 +626,91 @@ class SupportTicketOut(BaseModel):
         from_attributes = True
 
 
+# ─── Feedback (issue #308) ──────────────────────────────────────────────────
+
+FEEDBACK_CATEGORIES = {"bug", "feature", "general"}
+FEEDBACK_STATUSES = {"open", "planned", "in_progress", "completed", "declined"}
+ROADMAP_STATUSES = ("planned", "in_progress", "completed")
+
+
+class FeedbackIn(BaseModel):
+    category: str = Field(min_length=1, max_length=16)
+    message: str = Field(min_length=1, max_length=5000)
+    email: Optional[str] = Field(default=None, max_length=254)
+    screenshot: Optional[str] = None  # data URL: data:image/png;base64,...
+
+    @field_validator("category")
+    @classmethod
+    def _valid_category(cls, v: str) -> str:
+        v = v.strip().lower()
+        if v not in FEEDBACK_CATEGORIES:
+            raise ValueError("category must be one of: bug, feature, general")
+        return v
+
+    @field_validator("message")
+    @classmethod
+    def _not_blank(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("message must not be blank")
+        return v.strip()
+
+    @field_validator("screenshot")
+    @classmethod
+    def _valid_screenshot(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        if not v.startswith("data:image/"):
+            raise ValueError("screenshot must be an image data URL")
+        return v
+
+
+class FeedbackOut(BaseModel):
+    id: int
+    category: str
+    message: str
+    status: str
+    github_issue_url: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 class ContactSubmitResponse(BaseModel):
     message: str
     ticket: SupportTicketOut
+
+
+class FeedbackListResponse(BaseModel):
+    data: List[FeedbackOut]
+    page: int
+    page_size: int
+    total: int
+
+
+class FeedbackStatusUpdate(BaseModel):
+    status: str
+
+    @field_validator("status")
+    @classmethod
+    def _valid_status(cls, v: str) -> str:
+        v = v.strip().lower()
+        if v not in FEEDBACK_STATUSES:
+            raise ValueError("invalid status")
+        return v
+
+
+class RoadmapItem(BaseModel):
+    id: int
+    category: str
+    message: str
+    status: str
+
+    class Config:
+        from_attributes = True
+
+
+class RoadmapResponse(BaseModel):
+    planned: List[RoadmapItem]
+    in_progress: List[RoadmapItem]
+    completed: List[RoadmapItem]
