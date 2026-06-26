@@ -1,10 +1,11 @@
 """Pydantic schemas shared across all API routers."""
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 # ─── Fraud ────────────────────────────────────────────────────────────────────
@@ -539,3 +540,46 @@ class FAQSuggestionListResponse(BaseModel):
     page: int
     page_size: int
     total: int
+
+
+# ─── Contact / Support tickets (issue #305) ─────────────────────────────────
+
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+class ContactFormIn(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    email: str = Field(min_length=3, max_length=254)
+    subject: str = Field(min_length=1, max_length=200)
+    message: str = Field(min_length=1, max_length=5000)
+    # reCAPTCHA token from the frontend widget; optional when verification is off.
+    recaptcha_token: Optional[str] = None
+
+    @field_validator("name", "subject", "message")
+    @classmethod
+    def _not_blank(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("must not be blank")
+        return v.strip()
+
+    @field_validator("email")
+    @classmethod
+    def _valid_email(cls, v: str) -> str:
+        v = v.strip()
+        if not _EMAIL_RE.match(v):
+            raise ValueError("invalid email address")
+        return v
+
+
+class SupportTicketOut(BaseModel):
+    reference: str
+    status: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ContactSubmitResponse(BaseModel):
+    message: str
+    ticket: SupportTicketOut

@@ -38,6 +38,7 @@ from api.routers import (
     auth_router,
     backup_router,
     chat_router,
+    contact_router,
     contributors_router,
     errors_router,
     faq_router,
@@ -143,6 +144,7 @@ app.include_router(auth_router)
 app.include_router(audit_router)
 app.include_router(rate_limit_router)
 app.include_router(errors_router)
+app.include_router(contact_router)
 app.include_router(transactions_router)
 app.include_router(fraud_router)
 app.include_router(accounts_router)
