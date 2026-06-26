@@ -20,6 +20,21 @@ AstroML provides end-to-end tooling for:
 - Anomaly detection
 - Temporal modeling
 - Reproducible ML experimentation
+- Model registry with versioning and metrics tracking
+
+---
+
+## 📦 Model Registry
+
+The Model Registry provides version control for your trained models, enabling you to track model versions, performance metrics, and activate specific versions for production use.
+
+**Key Features:**
+- Register new model versions with auto‑generated or custom version tags
+- Track performance metrics alongside model artifacts
+- Activate specific model versions for inference
+- Configurable model storage location
+
+For full documentation, see [docs/model-registry.md](./docs/model-registry.md)
 
 ---
 

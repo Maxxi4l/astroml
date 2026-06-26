@@ -193,11 +193,15 @@ class ModelRegistry(Base):
     status: Mapped[str] = mapped_column(
         String(16), nullable=False, server_default="inactive"
     )  # inactive | active | deprecated
+    parent_id: Mapped[Optional[int]] = mapped_column(
+        _ID, nullable=True
+    )  # Lineage: parent model version id
     created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
 
     __table_args__ = (
         Index("ix_model_registry_name_version", "name", "version", unique=True),
         Index("ix_model_registry_status", "status"),
+        Index("ix_model_registry_parent_id", "parent_id"),
     )
 
 

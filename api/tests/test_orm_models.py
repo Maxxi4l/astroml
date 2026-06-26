@@ -294,3 +294,153 @@ class TestPointsTransactionModel:
             select(PointsTransaction).where(PointsTransaction.account_id == account_id)
         ).all()
         assert len(rows) == 3
+
+
+# ---------------------------------------------------------------------------
+# ModelRegistry
+# ---------------------------------------------------------------------------
+
+class TestModelRegistryModel:
+    def test_create_and_read(self, db_session):
+        model = ModelRegistry(
+            name="fraud_detector",
+            version="v1.0.0",
+            path="/path/to/model.pt",
+            metrics={"auc": 0.92, "precision": 0.88, "recall": 0.85},
+            status="inactive",
+        )
+        db_session.add(model)
+        db_session.flush()
+        db_session.refresh(model)
+
+        assert model.id is not None
+        assert model.name == "fraud_detector"
+        assert model.version == "v1.0.0"
+        assert model.path == "/path/to/model.pt"
+        assert model.metrics == {"auc": 0.92, "precision": 0.88, "recall": 0.85}
+        assert model.status == "inactive"
+        assert model.parent_id is None
+
+    def test_create_with_parent(self, db_session):
+        parent = ModelRegistry(
+            name="fraud_detector",
+            version="v1.0.0",
+            path="/path/to/parent.pt",
+        )
+        db_session.add(parent)
+        db_session.flush()
+        
+        child = ModelRegistry(
+            name="fraud_detector",
+            version="v1.1.0",
+            path="/path/to/child.pt",
+            parent_id=parent.id,
+        )
+        db_session.add(child)
+        db_session.flush()
+        db_session.refresh(child)
+        
+        assert child.parent_id == parent.id
+
+    def test_status_defaults_to_inactive(self, db_session):
+        model = ModelRegistry(
+            name="fraud_detector",
+            version="v1.0.0",
+            path="/path/to/model.pt",
+        )
+        db_session.add(model)
+        db_session.flush()
+        db_session.refresh(model)
+        assert model.status == "inactive"
+
+    def test_metrics_optional(self, db_session):
+        model = ModelRegistry(
+            name="fraud_detector",
+            version="v1.0.0",
+            path="/path/to/model.pt",
+        )
+        db_session.add(model)
+        db_session.flush()
+        db_session.refresh(model)
+        assert model.metrics is None
+
+    def test_name_version_unique_constraint(self, db_session):
+        # Add first model
+        db_session.add(ModelRegistry(
+            name="fraud_detector",
+            version="v1.0.0",
+            path="/path/to/model1.pt"
+        ))
+        db_session.flush()
+
+        # Try to add another with same name and version
+        db_session.add(ModelRegistry(
+            name="fraud_detector",
+            version="v1.0.0",
+            path="/path/to/model2.pt"
+        ))
+        with pytest.raises(IntegrityError):
+            db_session.flush()
+
+    def test_same_name_different_version_allowed(self, db_session):
+        db_session.add(ModelRegistry(
+            name="fraud_detector",
+            version="v1.0.0",
+            path="/path/to/model1.pt"
+        ))
+        db_session.add(ModelRegistry(
+            name="fraud_detector",
+            version="v1.1.0",
+            path="/path/to/model2.pt"
+        ))
+        db_session.flush()
+
+        from sqlalchemy import select
+        rows = db_session.scalars(
+            select(ModelRegistry).where(ModelRegistry.name == "fraud_detector")
+        ).all()
+        assert len(rows) == 2
+
+    def test_different_name_same_version_allowed(self, db_session):
+        db_session.add(ModelRegistry(
+            name="fraud_detector",
+            version="v1.0.0",
+            path="/path/to/model1.pt"
+        ))
+        db_session.add(ModelRegistry(
+            name="anomaly_detector",
+            version="v1.0.0",
+            path="/path/to/model2.pt"
+        ))
+        db_session.flush()
+
+        from sqlalchemy import select
+        rows = db_session.scalars(select(ModelRegistry)).all()
+        assert len(rows) == 2
+
+    def test_stage_transitions(self, db_session):
+        model = ModelRegistry(
+            name="fraud_detector",
+            version="v1.0.0",
+            path="/path/to/model.pt"
+        )
+        db_session.add(model)
+        db_session.flush()
+
+        # Test transition: inactive → active
+        model.status = "active"
+        db_session.flush()
+        db_session.refresh(model)
+        assert model.status == "active"
+
+        # Test transition: active → deprecated
+        model.status = "deprecated"
+        db_session.flush()
+        db_session.refresh(model)
+        assert model.status == "deprecated"
+
+        # Test transition: deprecated → inactive
+        model.status = "inactive"
+        db_session.flush()
+        db_session.refresh(model)
+        assert model.status == "inactive"
