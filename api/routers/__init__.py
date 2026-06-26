@@ -4,6 +4,7 @@ from api.routers.audit import router as audit_router
 from api.routers.auth import router as auth_router
 from api.routers.backup import router as backup_router
 from api.routers.chat import router as chat_router
+from api.routers.contact import router as contact_router
 from api.routers.errors import router as errors_router
 from api.routers.faq import router as faq_router
 from api.routers.fraud import router as fraud_router
@@ -24,6 +25,7 @@ __all__ = [
     "audit_router",
     "backup_router",
     "chat_router",
+    "contact_router",
     "contributors_router",
     "auth_router",
     "errors_router",
