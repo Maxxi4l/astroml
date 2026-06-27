@@ -3,12 +3,15 @@ from pydantic import BaseModel
 from api.services.llm_explainer import TransactionExplainer
 from api.services.llm_query import QueryTranslator
 from api.services.llm_context import MultiModalContextHandler
+from api.services.llm_validation import ResponseValidator
 from typing import List, Dict, Any
 
 router = APIRouter(prefix="/api/v1/llm", tags=["llm"])
 explainer = TransactionExplainer()
 query_translator = QueryTranslator()
 context_handler = MultiModalContextHandler()
+validator = ResponseValidator()
+
 
 
 
@@ -64,3 +67,21 @@ async def get_multimodal_context(request: ContextRequest):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+class ValidateRequest(BaseModel):
+    raw_response: Dict[str, Any]
+    context: str
+
+class ValidateResponse(BaseModel):
+    validated_response: Dict[str, Any]
+
+@router.post("/validate", response_model=ValidateResponse)
+async def validate_response(request: ValidateRequest):
+    try:
+        validated = validator.validate_and_guard(request.raw_response, request.context)
+        return ValidateResponse(validated_response=validated)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
