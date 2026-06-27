@@ -2,10 +2,14 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from api.services.llm_explainer import TransactionExplainer
 from api.services.llm_query import QueryTranslator
+from api.services.llm_context import MultiModalContextHandler
+from typing import List, Dict, Any
 
 router = APIRouter(prefix="/api/v1/llm", tags=["llm"])
 explainer = TransactionExplainer()
 query_translator = QueryTranslator()
+context_handler = MultiModalContextHandler()
+
 
 
 class ExplainRequest(BaseModel):
@@ -38,3 +42,25 @@ async def translate_query(request: QueryRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+class ContextRequest(BaseModel):
+    edges: List[Dict[str, Any]] = []
+    data_points: List[float] = []
+
+class ContextResponse(BaseModel):
+    graph_summary: str
+    time_series_trend: str
+    mermaid: str
+
+@router.post("/context", response_model=ContextResponse)
+async def get_multimodal_context(request: ContextRequest):
+    try:
+        summary = context_handler.serialize_and_summarize_graph(request.edges)
+        trend = context_handler.extract_time_series(request.data_points)
+        mermaid = context_handler.generate_mermaid_diagram([], request.edges)
+        return ContextResponse(
+            graph_summary=summary,
+            time_series_trend=trend,
+            mermaid=mermaid
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
