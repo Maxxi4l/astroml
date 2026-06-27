@@ -4,6 +4,7 @@ from api.services.llm_explainer import TransactionExplainer
 from api.services.llm_query import QueryTranslator
 from api.services.llm_context import MultiModalContextHandler
 from api.services.llm_validation import ResponseValidator
+from api.services.llm_rag import build_citations, build_rag_answer, retrieve_sources
 from typing import List, Dict, Any
 
 router = APIRouter(prefix="/api/v1/llm", tags=["llm"])
@@ -85,3 +86,33 @@ async def validate_response(request: ValidateRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+class AskRequest(BaseModel):
+    question: str
+
+
+class CitationResponse(BaseModel):
+    source_id: str
+    title: str
+    url: str
+    snippet: str
+
+
+class AskResponse(BaseModel):
+    answer: str
+    citations: List[CitationResponse]
+    mode: str
+
+
+@router.post("/ask", response_model=AskResponse)
+async def ask_question(request: AskRequest):
+    try:
+        sources = retrieve_sources(request.question)
+        citations = build_citations(request.question, sources)
+        return AskResponse(
+            answer=build_rag_answer(request.question, citations),
+            citations=[CitationResponse(**citation.__dict__) for citation in citations],
+            mode="mock-rag",
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
