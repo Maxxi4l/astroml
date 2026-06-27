@@ -54,6 +54,40 @@ class FraudExplanationOut(BaseModel):
     cached: bool
 
 
+class TransactionSummaryOut(BaseModel):
+    hash: str
+    amount: float
+    asset_code: str
+    destination_account: Optional[str] = None
+    created_at: str
+
+
+class PrioritizedAlertOut(BaseModel):
+    id: int
+    account_id: str
+    pattern: Optional[str] = None
+    risk_score: float
+    risk_level: str
+    priority_score: float
+    priority_level: str
+    explanation: str
+    detected_at: datetime
+    recent_transactions: List[TransactionSummaryOut]
+    account_activity_score: float
+    is_duplicate: bool = False
+    duplicate_of: Optional[int] = None
+
+    class Config:
+        from_attributes = True
+
+
+class PrioritizedAlertsResponse(BaseModel):
+    data: List[PrioritizedAlertOut]
+    deduplication_reduction_pct: int
+    total_processed: int
+    total_remaining: int
+
+
 class RiskPoint(BaseModel):
     date: str
     score: float

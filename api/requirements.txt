@@ -35,3 +35,7 @@ opentelemetry-exporter-zipkin==1.21.0
 
 # Utilities
 python-dotenv==1.0.0
+# Report Generation
+matplotlib==3.8.2
+markdown==3.5.1
+weasyprint==60.1

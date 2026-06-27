@@ -7,7 +7,8 @@ from api.services.llm_query import QueryTranslator
 from api.services.llm_context import MultiModalContextHandler
 from api.services.llm_validation import ResponseValidator
 from api.services.llm_rag import build_citations, build_rag_answer, retrieve_sources
-from typing import List, Dict, Any
+from api.auth.dependencies import get_current_auth, AuthContext
+from typing import List, Dict, Any, AsyncGenerator
 
 router = APIRouter(prefix="/api/v1/llm", tags=["llm"])
 explainer = TransactionExplainer()
@@ -39,7 +40,7 @@ class ExplainResponse(BaseModel):
     explanation: str
 
 @router.post("/explain", response_model=ExplainResponse)
-async def explain_transaction(request: ExplainRequest):
+async def explain_transaction(request: ExplainRequest, auth: AuthContext = Depends(get_current_auth)):
     try:
         explanation = await explainer.explain(request.tx_details)
         return ExplainResponse(explanation=explanation)
@@ -53,7 +54,7 @@ class QueryResponse(BaseModel):
     sql: str
 
 @router.post("/query", response_model=QueryResponse)
-async def translate_query(request: QueryRequest):
+async def translate_query(request: QueryRequest, auth: AuthContext = Depends(get_current_auth)):
     try:
         sql = query_translator.translate_to_sql(request.query)
         return QueryResponse(sql=sql)
@@ -72,7 +73,7 @@ class ContextResponse(BaseModel):
     mermaid: str
 
 @router.post("/context", response_model=ContextResponse)
-async def get_multimodal_context(request: ContextRequest):
+async def get_multimodal_context(request: ContextRequest, auth: AuthContext = Depends(get_current_auth)):
     try:
         summary = context_handler.serialize_and_summarize_graph(request.edges)
         trend = context_handler.extract_time_series(request.data_points)
@@ -93,7 +94,7 @@ class ValidateResponse(BaseModel):
     validated_response: Dict[str, Any]
 
 @router.post("/validate", response_model=ValidateResponse)
-async def validate_response(request: ValidateRequest):
+async def validate_response(request: ValidateRequest, auth: AuthContext = Depends(get_current_auth)):
     try:
         validated = validator.validate_and_guard(request.raw_response, request.context)
         return ValidateResponse(validated_response=validated)
@@ -121,7 +122,7 @@ class AskResponse(BaseModel):
 
 
 @router.post("/ask", response_model=AskResponse)
-async def ask_question(request: AskRequest):
+async def ask_question(request: AskRequest, auth: AuthContext = Depends(get_current_auth)):
     try:
         sources = retrieve_sources(request.question)
         citations = build_citations(request.question, sources)
@@ -132,3 +133,31 @@ async def ask_question(request: AskRequest):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+class StreamRequest(BaseModel):
+    prompt: str
+
+
+async def generate_stream_response(prompt: str) -> AsyncGenerator[str, None]:
+    """Example streaming response generator."""
+    response_chunks = [
+        "This is",
+        " a streaming",
+        " response",
+        " from the",
+        " LLM service."
+    ]
+    for chunk in response_chunks:
+        yield chunk + "\n"
+        import asyncio
+        await asyncio.sleep(0.1)
+
+
+@router.post("/stream")
+async def stream_response(request: StreamRequest, auth: AuthContext = Depends(get_current_auth)):
+    """Streaming endpoint for LLM responses."""
+    return StreamingResponse(
+        generate_stream_response(request.prompt),
+        media_type="text/plain"
+    )
