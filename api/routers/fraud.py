@@ -27,14 +27,19 @@ from api.schemas import (
     FraudAlertOut,
     FraudAlertsResponse,
     FraudStatsResponse,
+    FraudExplanationOut,
     RiskPoint,
     ScoreRequest,
     ScoreResponse,
 )
 from api.services.scorer import invalidate_scorer_cache, load_scorer
+from api.models.orm import FraudAlert, ApiTransaction
+from astroml.llm.explainer import FraudExplainer
+import time
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/fraud", tags=["fraud"])
+explainer = FraudExplainer()
 
 
 def _get_scorer():
@@ -123,6 +128,52 @@ def get_fraud_stats(db: Session = Depends(get_sync_db)):
             RiskPoint(date=str(row.day), score=round(float(row.avg_score), 4))
             for row in daily
         ],
+    )
+
+
+@router.get("/{id}/explanation", response_model=FraudExplanationOut)
+def get_fraud_explanation(id: int, db: Session = Depends(get_sync_db)):
+    """Generate an explanation for a fraud alert, citing evidence."""
+    alert = db.get(FraudAlert, id)
+    if not alert:
+        raise HTTPException(status_code=404, detail="Alert not found")
+        
+    # Fetch recent transactions as evidence
+    txs = db.scalars(
+        select(ApiTransaction)
+        .where(ApiTransaction.source_account == alert.account_id)
+        .order_by(ApiTransaction.created_at.desc())
+        .limit(10)
+    ).all()
+    
+    tx_dicts = [
+        {
+            "hash": tx.hash,
+            "amount": float(tx.amount) if tx.amount else 0.0,
+            "asset_code": tx.asset_code or "XLM",
+            "destination_account": tx.destination_account,
+            "ledger_sequence": tx.ledger_sequence
+        } for tx in txs
+    ]
+    
+    start_time = time.time()
+    
+    explanation = explainer.generate_explanation(
+        alert_id=alert.id,
+        account_id=alert.account_id,
+        pattern=alert.pattern or "unknown",
+        score=alert.risk_score,
+        transactions=tx_dicts
+    )
+    
+    end_time = time.time()
+    elapsed_ms = (end_time - start_time) * 1000.0
+    
+    return FraudExplanationOut(
+        alert_id=alert.id,
+        explanation=explanation,
+        generated_in_ms=elapsed_ms,
+        cached=elapsed_ms < 100.0  # Simple heuristic for now
     )
 
 

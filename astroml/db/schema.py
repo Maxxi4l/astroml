@@ -538,6 +538,7 @@ class NormalizedTransaction(Base):
 
 
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 # Model Registry
 # ---------------------------------------------------------------------------
 
@@ -553,7 +554,9 @@ class Model(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
     created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
-        nullable=False, server_default=func.now(), onupdate=func.now()
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
     )
 
     versions: Mapped[list["ModelVersion"]] = relationship(
@@ -583,7 +586,9 @@ class ModelVersion(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     model_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("models.id"), nullable=False
+        Integer,
+        ForeignKey("models.id"),
+        nullable=False,
     )
     version: Mapped[str] = mapped_column(String(32), nullable=False)
     artifact_path: Mapped[str] = mapped_column(String(512), nullable=False)
@@ -594,13 +599,18 @@ class ModelVersion(Base):
         JSON().with_variant(JSONB(), "postgresql")
     )
     status: Mapped[str] = mapped_column(
-        String(32), nullable=False, server_default="training"
+        String(32),
+        nullable=False,
+        server_default="training",
     )
     created_at: Mapped[datetime] = mapped_column(
-        nullable=False, server_default=func.now()
+        nullable=False,
+        server_default=func.now(),
     )
     updated_at: Mapped[datetime] = mapped_column(
-        nullable=False, server_default=func.now(), onupdate=func.now()
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
     )
     deployed_at: Mapped[Optional[datetime]] = mapped_column()
 
@@ -623,7 +633,8 @@ class ModelVersion(Base):
 
 
 # ---------------------------------------------------------------------------
-# Backfill Processing
+# Ledger Processing
+# ---------------------------------------------------------------------------
 # ---------------------------------------------------------------------------
 
 class ProcessedLedger(Base):
@@ -632,11 +643,7 @@ class ProcessedLedger(Base):
     __tablename__ = "processed_ledgers"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    ledger_sequence: Mapped[int] = mapped_column(
-        Integer,
-        unique=True,
-        nullable=False,
-    )
+ledger_sequence: Mapped[int] = mapped_column(Integer, unique=True, nullable=False)
     source: Mapped[str] = mapped_column(
         String(256),
         nullable=False,
@@ -646,9 +653,13 @@ class ProcessedLedger(Base):
         nullable=False,
         server_default=func.now(),
     )
-    status: Mapped[
-        Literal["pending", "processing", "completed", "failed"]
-    ] = mapped_column(
+status: Mapped[
+    Literal["pending", "processing", "completed", "failed"]
+] = mapped_column(
+    String(16),
+    nullable=False,
+    server_default="pending",
+)
         String(32),
         nullable=False,
         server_default="pending",
