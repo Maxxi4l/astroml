@@ -22,9 +22,9 @@ def get_llm_provider(provider_name: str = None, **kwargs) -> LLMProvider:
     provider_class = _PROVIDERS[provider_name]
     
     # Extract API key based on provider
-    api_key = kwargs.get("api_key")
+    api_key = kwargs.pop("api_key", None)
     if not api_key:
         env_key = f"{provider_name.upper()}_API_KEY"
         api_key = os.getenv(env_key, f"mock-{provider_name}-key")
-    
+
     return provider_class(api_key=api_key, **kwargs)

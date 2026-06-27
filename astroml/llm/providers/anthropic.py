@@ -9,9 +9,23 @@ class AnthropicProvider(LLMProvider):
         self.last_usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
 
     def generate(self, prompt: str, **kwargs: Any) -> str:
-        # Mock implementation for Anthropic generate
-        self.last_usage = {"prompt_tokens": 12, "completion_tokens": 18, "total_tokens": 30}
-        return f"Anthropic ({self.model}) response to: {prompt}"
+        import anthropic
+
+        client = anthropic.Anthropic(api_key=self.api_key)
+        max_tokens = kwargs.pop("max_tokens", 1024)
+        response = client.messages.create(
+            model=kwargs.pop("model", self.model),
+            max_tokens=max_tokens,
+            messages=[{"role": "user", "content": prompt}],
+            **kwargs,
+        )
+        if response.usage is not None:
+            self.last_usage = {
+                "prompt_tokens": response.usage.input_tokens,
+                "completion_tokens": response.usage.output_tokens,
+                "total_tokens": response.usage.input_tokens + response.usage.output_tokens,
+            }
+        return "".join(block.text for block in response.content if hasattr(block, "text"))
 
     def get_token_usage(self) -> Dict[str, int]:
         return self.last_usage

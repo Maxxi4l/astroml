@@ -9,9 +9,21 @@ class OpenAIProvider(LLMProvider):
         self.last_usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
 
     def generate(self, prompt: str, **kwargs: Any) -> str:
-        # Mock implementation for OpenAI generate
-        self.last_usage = {"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30}
-        return f"OpenAI ({self.model}) response to: {prompt}"
+        import openai
+
+        client = openai.OpenAI(api_key=self.api_key)
+        response = client.chat.completions.create(
+            model=kwargs.pop("model", self.model),
+            messages=[{"role": "user", "content": prompt}],
+            **kwargs,
+        )
+        if response.usage is not None:
+            self.last_usage = {
+                "prompt_tokens": response.usage.prompt_tokens,
+                "completion_tokens": response.usage.completion_tokens,
+                "total_tokens": response.usage.total_tokens,
+            }
+        return response.choices[0].message.content
 
     def get_token_usage(self) -> Dict[str, int]:
         return self.last_usage
