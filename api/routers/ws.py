@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import json
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 from sqlalchemy import select
@@ -83,6 +84,83 @@ async def ws_alerts(
         pass
     finally:
         heartbeat.cancel()
+        await ws_manager.disconnect(client)
+
+
+async def _handle_llm_chat(websocket: WebSocket, client):
+    """Handle LLM chat messages and streaming responses."""
+    while True:
+        try:
+            raw = await websocket.receive_text()
+            message = json.loads(raw)
+            msg_type = message.get("type")
+            
+            if msg_type == "pong":
+                ws_manager.record_pong(client)
+            elif msg_type == "chat":
+                # Handle chat message and stream response
+                await ws_manager.send_json(client, {
+                    "type": "chat_start",
+                    "messageId": message.get("messageId")
+                })
+                
+                # Simulate streaming response
+                response_chunks = [
+                    "This", " is", " a", " simulated", " LLM", " response", " in", " chunks."
+                ]
+                for chunk in response_chunks:
+                    await ws_manager.send_json(client, {
+                        "type": "chunk",
+                        "data": chunk
+                    })
+                    await asyncio.sleep(0.1)  # Simulate processing time
+                
+                await ws_manager.send_json(client, {
+                    "type": "chat_end",
+                    "messageId": message.get("messageId")
+                })
+        except json.JSONDecodeError:
+            await ws_manager.send_json(client, {
+                "type": "error",
+                "error": "Invalid JSON message"
+            })
+        except WebSocketDisconnect:
+            break
+        except Exception as e:
+            await ws_manager.send_json(client, {
+                "type": "error",
+                "error": str(e)
+            })
+
+
+@router.websocket("/llm")
+async def ws_llm(
+    websocket: WebSocket,
+    token: str | None = Query(None),
+):
+    """WebSocket endpoint for real-time LLM streaming chat."""
+    if not await _authenticate_ws(token):
+        await websocket.close(code=1008, reason="Unauthorized")
+        return
+
+    client = await ws_manager.connect(websocket, "llm")
+    heartbeat = asyncio.create_task(ws_manager.heartbeat_loop(client))
+    
+    # Send connected message immediately to meet <500ms requirement
+    await ws_manager.send_json(client, {
+        "type": "connected",
+        "status": "ok"
+    })
+    
+    chat_task = asyncio.create_task(_handle_llm_chat(websocket, client))
+    
+    try:
+        await chat_task
+    except WebSocketDisconnect:
+        pass
+    finally:
+        heartbeat.cancel()
+        chat_task.cancel()
         await ws_manager.disconnect(client)
 
 

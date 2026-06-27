@@ -41,6 +41,7 @@ class RateLimiter:
             "/api/v1/fraud": RateLimitConfig(requests_per_minute=50, burst_size=10),
             "/api/v1/accounts": RateLimitConfig(requests_per_minute=30, burst_size=5),
             "/api/v1/monitoring": RateLimitConfig(requests_per_minute=60, burst_size=10),
+            "/api/v1/llm": RateLimitConfig(requests_per_minute=100, burst_size=20),
         }
 
     def _get_endpoint_config(self, path: str) -> RateLimitConfig:

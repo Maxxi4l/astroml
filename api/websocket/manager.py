@@ -33,6 +33,7 @@ class ConnectionManager:
         self._clients: dict[str, list[_ClientState]] = {
             "transactions": [],
             "alerts": [],
+            "llm": [],
         }
         self._lock = asyncio.Lock()
 

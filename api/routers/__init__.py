@@ -21,6 +21,8 @@ from api.routers.validation import router as validation_router
 from api.routers.ws import router as ws_router
 from api.routers.streaming import router as streaming_router
 from api.routers.llm import router as llm_router
+from api.routers.reports import router as reports_router
+from api.routers.alerts import router as alerts_router
 
 __all__ = [
     "accounts_router",
@@ -45,4 +47,6 @@ __all__ = [
     "ws_router",
     "streaming_router",
     "llm_router",
+    "reports_router",
+    "alerts_router",
 ]
