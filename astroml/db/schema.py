@@ -557,9 +557,11 @@ class ProcessedLedger(Base):
         nullable=False,
         server_default=func.now(),
     )
-    status: Mapped[
-        Literal["pending", "processing", "completed", "failed"]
-    ] = mapped_column(
+status: Mapped[
+    Literal["pending", "processing", "completed", "failed"]
+] = mapped_column()
+
+
         String(32),
         nullable=False,
         server_default="pending",
