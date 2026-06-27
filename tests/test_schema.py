@@ -21,6 +21,8 @@ from astroml.db.schema import (
     GraphPaymentDetail,
     GraphTransactionDetail,
     Ledger,
+    Model,
+    ModelVersion,
     Operation,
     Transaction,
 )
@@ -50,7 +52,7 @@ def session(engine):
 # ---------------------------------------------------------------------------
 
 def test_models_importable():
-    """All five model classes import cleanly."""
+    """All model classes import cleanly."""
     for cls in (
         Ledger,
         Transaction,
@@ -62,6 +64,8 @@ def test_models_importable():
         GraphTransactionDetail,
         GraphClaimDetail,
         GraphPaymentDetail,
+        Model,
+        ModelVersion,
     ):
         assert hasattr(cls, "__tablename__")
 
@@ -80,6 +84,8 @@ def test_create_all_tables(engine):
         "graph_payment_details",
         "graph_transaction_details",
         "ledgers",
+        "model_versions",
+        "models",
         "normalized_transactions",
         "operations",
         "transactions",
@@ -95,6 +101,8 @@ def test_table_names():
     assert Asset.__tablename__ == "assets"
     assert GraphAccount.__tablename__ == "graph_accounts"
     assert GraphEdge.__tablename__ == "graph_edges"
+    assert Model.__tablename__ == "models"
+    assert ModelVersion.__tablename__ == "model_versions"
 
 
 # ---------------------------------------------------------------------------
@@ -226,6 +234,48 @@ def test_graph_detail_columns(engine):
     assert {"edge_id", "edge_type", "payment_reference", "payment_status", "fee_amount", "settled_at", "details"} <= payment_cols
 
 
+def test_model_columns(engine):
+    inspector = inspect(engine)
+    cols = {c["name"] for c in inspector.get_columns("models")}
+    expected = {
+        "id",
+        "name",
+        "description",
+        "framework",
+        "task_type",
+        "is_active",
+        "created_at",
+        "updated_at",
+    }
+    assert expected <= cols
+
+
+def test_model_version_columns(engine):
+    inspector = inspect(engine)
+    cols = {c["name"] for c in inspector.get_columns("model_versions")}
+    expected = {
+        "id",
+        "model_id",
+        "version",
+        "artifact_path",
+        "hyperparameters",
+        "metrics",
+        "status",
+        "created_at",
+        "updated_at",
+        "deployed_at",
+    }
+    assert expected <= cols
+
+    # FK to models
+    fks = inspector.get_foreign_keys("model_versions")
+    assert any(
+        fk["referred_table"] == "models"
+        and fk["referred_columns"] == ["id"]
+        for fk in fks
+    )
+
+
 # ---------------------------------------------------------------------------
 # Relationships
 # ---------------------------------------------------------------------------
@@ -317,6 +367,43 @@ def test_graph_relationships(session):
     assert edge.destination_account is destination
     assert edge.payment_detail is detail
     assert detail.edge is edge
+
+
+def test_model_registry_relationships(session):
+    """Model.versions cascade deletes ModelVersion rows."""
+    now = datetime.now(timezone.utc)
+
+    model = Model(
+        name="test-model",
+        framework="pytorch",
+        task_type="classification",
+        description="Test model",
+    )
+    session.add(model)
+    session.flush()
+
+    version1 = ModelVersion(
+        model_id=model.id,
+        version="1.0.0",
+        artifact_path="/models/v1",
+        status="trained",
+    )
+    version2 = ModelVersion(
+        model_id=model.id,
+        version="2.0.0",
+        artifact_path="/models/v2",
+        status="training",
+    )
+    session.add_all([version1, version2])
+    session.flush()
+
+    session.refresh(model)
+
+    assert len(model.versions) == 2
+    assert version1 in model.versions
+    assert version2 in model.versions
+    assert version1.model is model
+    assert version2.model is model
 
 
 # ---------------------------------------------------------------------------

@@ -14,6 +14,29 @@ from astroml.db.session import get_session
 logger = logging.getLogger(__name__)
 
 
+status: Mapped[
+    Literal["training", "trained", "deployed", "archived", "failed"]
+] = mapped_column()
+
+# ---------------------------------------------------------------------------
+# ModelVersion State Machine
+# ---------------------------------------------------------------------------
+
+VALID_STATUS_TRANSITIONS = {
+    "training": ["trained", "failed"],
+    "trained": ["deployed", "archived"],
+    "deployed": ["archived"],
+    "archived": [],  # Terminal state
+    "failed": ["training"],  # Can retry training
+}
+
+VALID_STATUSES = set(VALID_STATUS_TRANSITIONS.keys())
+
+
+class InvalidStatusTransitionError(ValueError):
+    """Raised when an invalid status transition is attempted."""
+    pass
+
 class ModelRegistry:
     """Core class for managing ML models and their versions in the database.
 
@@ -300,6 +323,12 @@ class ModelRegistry:
         status: Optional[str] = None,
         metrics: Optional[Dict[str, Any]] = None,
         deployed_at: Optional[datetime] = None,
+def update_status(
+    new_status: str,
+    validate_transition: bool = True,
+) -> None:
+    ...
+
     ) -> Optional[ModelVersion]:
         """Update a model version.
 
@@ -308,15 +337,25 @@ class ModelRegistry:
             status: New status
             metrics: New or updated metrics
             deployed_at: Deployment timestamp
+        Args:
+            new_status: The new status to set
+            validate_transition: Whether to validate status transitions (default: True)
 
         Returns:
             Updated ModelVersion instance or None if not found
+
+        Raises:
+            InvalidStatusTransitionError: If status transition is invalid
+
         """
         version = self.get_model_version_by_id(version_id)
         if not version:
             return None
 
         if status is not None:
+if validate_transition:
+    self._validate_status_transition(version.status, status)
+
             version.status = status
         if metrics is not None:
             version.metrics = metrics
@@ -392,5 +431,48 @@ class ModelRegistry:
 
         Returns:
             Updated ModelVersion or None if not found
-        """
-        return self.update_model_version(version_id, status="deployed", deployed_at=datetime.now(datetime.UTC))
+def mark_deployed(self, version_id: int) -> Optional[ModelVersion]:
+    """Mark a model version as deployed.
+
+    Args:
+        version_id: ModelVersion ID
+
+    Returns:
+        Updated ModelVersion instance or None if not found
+
+    Raises:
+        InvalidStatusTransitionError: If version cannot be deployed
+    """
+    return self.update_model_version(
+        version_id,
+        status="deployed",
+        deployed_at=datetime.now(datetime.UTC),
+    )
+
+# ------------------------------------------------------------------
+# State machine methods
+# ------------------------------------------------------------------
+
+@staticmethod
+def _validate_status_transition(from_status: str, to_status: str) -> None:
+    """Validate that a status transition is allowed.
+
+    Args:
+        from_status: Current status
+        to_status: Target status
+
+    Raises:
+        InvalidStatusTransitionError: If transition is not allowed
+    """
+    if to_status not in VALID_STATUSES:
+        raise InvalidStatusTransitionError(f"Invalid target status: '{to_status}'")
+
+    if from_status == to_status:
+        return  # No-op transition is allowed
+
+    allowed_transitions = VALID_STATUS_TRANSITIONS.get(from_status, [])
+    if to_status not in allowed_transitions:
+        raise InvalidStatusTransitionError(
+            f"Cannot transition from '{from_status}' to '{to_status}'. "
+            f"Allowed transitions from '{from_status}': {allowed_transitions}"
+        )

@@ -22,8 +22,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.database import get_db
 from api.models.orm import ApiTransaction as Transaction
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+from astroml.llm.explainer import TransactionExplainer
 
 router = APIRouter(prefix="/api/v1/transactions", tags=["transactions"])
+explainer = TransactionExplainer()
 
 
 # ─── Schemas ─────────────────────────────────────────────────────────────────
@@ -115,6 +120,24 @@ async def get_transaction(hash: str, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Transaction not found")
     return TransactionOut.from_orm(tx)
 
+
+@router.get("/{hash}/explain")
+async def explain_transaction(hash: str, db: AsyncSession = Depends(get_db)):
+    """Explain a single transaction by hash using LLM."""
+    result = await db.execute(select(Transaction).where(Transaction.hash == hash))
+    tx = result.scalar_one_or_none()
+    if tx is None:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+        
+    tx_data = {
+        'id': tx.hash,
+        'from_address': tx.source_account,
+        'to_address': tx.destination_account,
+        'amount': str(tx.amount) if tx.amount is not None else '0'
+    }
+    
+    explanation = explainer.explain(tx_data)
+    return {"hash": hash, "explanation": explanation}
 
 @router.get("", response_model=TransactionHistoryResponse)
 async def list_transactions(
