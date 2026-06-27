@@ -1,5 +1,6 @@
-from fastapi import APIRouter, HTTPException, Depends
-from fastapi.responses import StreamingResponse
+import os
+
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from api.services.llm_explainer import TransactionExplainer
 from api.services.llm_query import QueryTranslator
@@ -14,6 +15,20 @@ explainer = TransactionExplainer()
 query_translator = QueryTranslator()
 context_handler = MultiModalContextHandler()
 validator = ResponseValidator()
+memory = ConversationMemory()
+llm_provider = MockLLMProvider()
+embedding_cache = EmbeddingCache()
+embedding_router = build_default_router()
+
+# Drift monitor — dimension inferred lazily from first observed vector.
+# Default to 384 (HuggingFace MiniLM-L6-v2 fallback dim); reconfigured at
+# runtime if the active provider returns a different dimension.
+_DRIFT_MONITOR_DIM = int(os.getenv("EMBEDDING_DRIFT_DIM", "384"))
+drift_monitor = EmbeddingDriftMonitor(
+    n_dims=_DRIFT_MONITOR_DIM,
+    provider_name="default",
+    check_every=50,
+)
 
 
 
