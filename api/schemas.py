@@ -714,3 +714,56 @@ class RoadmapResponse(BaseModel):
     planned: List[RoadmapItem]
     in_progress: List[RoadmapItem]
     completed: List[RoadmapItem]
+
+# ─── LLM feedback (#402) ────────────────────────────────────────────────────
+
+class LLMFeedbackIn(BaseModel):
+    feature: str = Field(min_length=1, max_length=64)
+    prompt: str = Field(min_length=1, max_length=8000)
+    output: str = Field(min_length=1, max_length=8000)
+    rating: int = Field(ge=1, le=5)
+    comment: Optional[str] = Field(default=None, max_length=2000)
+    user_id: Optional[str] = Field(default=None, max_length=128)
+    is_expert: bool = False
+    expert_weight: float = Field(default=1.0, ge=1.0, le=5.0)
+
+    @field_validator("feature", "prompt", "output")
+    @classmethod
+    def _strip_required(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("must not be blank")
+        return v
+
+
+class LLMFeedbackOut(BaseModel):
+    id: int
+    feature: str
+    rating: int
+    comment: Optional[str] = None
+    is_expert: bool
+    expert_weight: float
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class LLMFeedbackTrend(BaseModel):
+    feature: str
+    count: int
+    average_rating: float
+    weighted_average_rating: float
+    expert_count: int
+
+
+class LLMFeedbackDashboard(BaseModel):
+    total: int
+    trends: List[LLMFeedbackTrend]
+    low_rating_examples: List[LLMFeedbackOut]
+
+
+class LLMPromptImprovement(BaseModel):
+    feature: str
+    recommendation: str
+    evidence_count: int
