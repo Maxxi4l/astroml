@@ -566,5 +566,31 @@ class SupportTicket(Base):
     )
 
 
+class Feedback(Base):
+    """In-app user feedback: bug reports, feature requests, general comments (#308)."""
+
+    __tablename__ = "feedback"
+
+    id: Mapped[int] = mapped_column(_ID, primary_key=True, autoincrement=True)
+    category: Mapped[str] = mapped_column(String(16), nullable=False)  # bug|feature|general
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    email: Mapped[Optional[str]] = mapped_column(String(254))
+    # Optional screenshot stored as a data URL (data:image/png;base64,...).
+    screenshot: Mapped[Optional[str]] = mapped_column(Text)
+    # open|planned|in_progress|completed|declined — drives the public roadmap.
+    status: Mapped[str] = mapped_column(String(16), nullable=False, server_default="open")
+    github_issue_url: Mapped[Optional[str]] = mapped_column(String(512))
+    created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+
+    __table_args__ = (
+        Index("ix_feedback_category", "category"),
+        Index("ix_feedback_status", "status"),
+        Index("ix_feedback_created_at", "created_at"),
+    )
+
+
 # Backward-compatible aliases removed — use ApiAccount / ApiTransaction to avoid
 # SQLAlchemy mapper name collisions with astroml.db.schema.
