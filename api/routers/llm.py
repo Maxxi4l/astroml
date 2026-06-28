@@ -1,12 +1,29 @@
 import os
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from api.services.llm_explainer import TransactionExplainer
 from api.services.llm_query import QueryTranslator
 from api.services.llm_context import MultiModalContextHandler
 from api.services.llm_validation import ResponseValidator
 from api.services.llm_rag import build_citations, build_rag_answer, retrieve_sources
+from astroml.llm.embedding_cache import EmbeddingCache
+from astroml.llm.embedding_drift import EmbeddingDriftMonitor
+from astroml.llm.memory import ConversationMemory
+from astroml.llm.provider import MockLLMProvider
+from astroml.llm.providers.embedding_router import build_default_router
+from api.database import get_db
+from api.models.orm import LLMFeedback
+from api.schemas import (
+    LLMFeedbackDashboard,
+    LLMFeedbackIn,
+    LLMFeedbackOut,
+    LLMFeedbackTrend,
+    LLMPromptImprovement,
+)
 from api.auth.dependencies import get_current_auth, AuthContext
 from typing import List, Dict, Any, AsyncGenerator
 
@@ -161,3 +178,82 @@ async def stream_response(request: StreamRequest, auth: AuthContext = Depends(ge
         generate_stream_response(request.prompt),
         media_type="text/plain"
     )
+
+
+# Feedback collection for LLM outputs (#402)
+@router.post("/feedback", response_model=LLMFeedbackOut, status_code=201)
+async def submit_llm_feedback(
+    payload: LLMFeedbackIn,
+    db: AsyncSession = Depends(get_db),
+) -> LLMFeedback:
+    """Collect one-click/user or weighted expert feedback for an LLM output."""
+    weight = payload.expert_weight if payload.is_expert else 1.0
+    feedback = LLMFeedback(
+        feature=payload.feature,
+        prompt=payload.prompt,
+        output=payload.output,
+        rating=payload.rating,
+        comment=payload.comment,
+        user_id=payload.user_id,
+        is_expert=payload.is_expert,
+        expert_weight=weight,
+    )
+    db.add(feedback)
+    await db.commit()
+    await db.refresh(feedback)
+    return feedback
+
+
+@router.get("/feedback/dashboard", response_model=LLMFeedbackDashboard)
+async def llm_feedback_dashboard(db: AsyncSession = Depends(get_db)) -> LLMFeedbackDashboard:
+    """Return trend metrics used by the LLM feedback dashboard."""
+    rows = (await db.execute(select(LLMFeedback))).scalars().all()
+    grouped: dict[str, list[LLMFeedback]] = {}
+    for row in rows:
+        grouped.setdefault(row.feature, []).append(row)
+
+    trends = []
+    for feature, items in sorted(grouped.items()):
+        count = len(items)
+        avg = sum(item.rating for item in items) / count
+        weight_total = sum(item.expert_weight for item in items)
+        weighted = sum(item.rating * item.expert_weight for item in items) / weight_total
+        trends.append(
+            LLMFeedbackTrend(
+                feature=feature,
+                count=count,
+                average_rating=round(avg, 2),
+                weighted_average_rating=round(weighted, 2),
+                expert_count=sum(1 for item in items if item.is_expert),
+            )
+        )
+
+    low_examples = sorted(rows, key=lambda item: (item.rating, -item.id))[:5]
+    return LLMFeedbackDashboard(
+        total=len(rows),
+        trends=trends,
+        low_rating_examples=[LLMFeedbackOut.model_validate(item) for item in low_examples],
+    )
+
+
+@router.get("/feedback/prompt-improvements", response_model=list[LLMPromptImprovement])
+async def llm_prompt_improvements(db: AsyncSession = Depends(get_db)) -> list[LLMPromptImprovement]:
+    """Summarize feedback into prompt-improvement recommendations."""
+    low_rows = (
+        await db.execute(select(LLMFeedback).where(LLMFeedback.rating <= 3))
+    ).scalars().all()
+    by_feature: dict[str, list[LLMFeedback]] = {}
+    for row in low_rows:
+        by_feature.setdefault(row.feature, []).append(row)
+
+    return [
+        LLMPromptImprovement(
+            feature=feature,
+            evidence_count=len(items),
+            recommendation=(
+                "Revise the prompt to request concise, cited, schema-valid output; "
+                "prioritize expert comments when available."
+            ),
+        )
+        for feature, items in sorted(by_feature.items())
+    ]
