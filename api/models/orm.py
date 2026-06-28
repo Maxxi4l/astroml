@@ -592,5 +592,27 @@ class Feedback(Base):
     )
 
 
+class LLMFeedback(Base):
+    """User and expert feedback for LLM outputs (#402)."""
+
+    __tablename__ = "llm_feedback"
+
+    id: Mapped[int] = mapped_column(_ID, primary_key=True, autoincrement=True)
+    feature: Mapped[str] = mapped_column(String(64), nullable=False)
+    prompt: Mapped[str] = mapped_column(Text, nullable=False)
+    output: Mapped[str] = mapped_column(Text, nullable=False)
+    rating: Mapped[int] = mapped_column(Integer, nullable=False)
+    comment: Mapped[Optional[str]] = mapped_column(Text)
+    user_id: Mapped[Optional[str]] = mapped_column(String(128))
+    is_expert: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="0")
+    expert_weight: Mapped[float] = mapped_column(Float, nullable=False, server_default="1.0")
+    created_at: Mapped[datetime] = mapped_column(nullable=False, server_default=func.now())
+
+    __table_args__ = (
+        Index("ix_llm_feedback_feature", "feature"),
+        Index("ix_llm_feedback_created_at", "created_at"),
+    )
+
+
 # Backward-compatible aliases removed — use ApiAccount / ApiTransaction to avoid
 # SQLAlchemy mapper name collisions with astroml.db.schema.
