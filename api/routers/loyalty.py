@@ -19,6 +19,8 @@ from sqlalchemy.orm import Session
 
 from api.schemas import (
     BenefitOut,
+    LoyaltyRecommendationRequest,
+    LoyaltyRecommendationResponse,
     LoyaltySummaryFull,
     LoyaltyTierOut,
     NextTierInfo,
@@ -28,8 +30,10 @@ from api.schemas import (
     RedeemResponse,
     ReferralOut,
 )
+from api.services.loyalty_recommendations import LoyaltyRecommendationService
 
 router = APIRouter(prefix="/api/v1/loyalty", tags=["loyalty"])
+recommendation_service = LoyaltyRecommendationService()
 
 # ─── Static tier definitions ─────────────────────────────────────────────────
 
@@ -266,6 +270,21 @@ def get_referral(account_id: str, db: Optional[Session] = Depends(_get_db)):
             ) or 0
 
     return ReferralOut(url=f"{base_url}?code={code}", invited=invited, rewards=rewards)
+
+
+@router.post("/recommendations", response_model=LoyaltyRecommendationResponse)
+def generate_recommendations(payload: LoyaltyRecommendationRequest):
+    """Generate fast loyalty recommendations using transaction behavior and balance signals."""
+    start = datetime.now(timezone.utc)
+    balance = int(payload.balance or 0)
+    result = recommendation_service.generate(
+        account_id=payload.account_id,
+        balance=balance,
+        transactions=payload.transactions,
+    )
+    elapsed_ms = (datetime.now(timezone.utc) - start).total_seconds() * 1000
+    result["response_time_ms"] = round(elapsed_ms, 2)
+    return result
 
 
 # ─── Helper ───────────────────────────────────────────────────────────────────

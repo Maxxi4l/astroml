@@ -271,6 +271,51 @@ class ReferralOut(BaseModel):
     rewards: int
 
 
+class LoyaltyRecommendationRequest(BaseModel):
+    account_id: str
+    balance: int = 0
+    transactions: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+class LoyaltyRecommendationItem(BaseModel):
+    id: str
+    title: str
+    description: str
+    offer_type: str
+    points_cost: int
+    expected_acceptance_rate: float
+    reason: str
+    eligible: bool
+
+
+class LoyaltyRecommendationResponse(BaseModel):
+    account_id: str
+    balance: int
+    analysis_summary: str
+    recommendations: List[LoyaltyRecommendationItem]
+    generated_at: str
+    response_time_ms: float
+
+
+class SentimentIngestRequest(BaseModel):
+    asset: str
+    items: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+class SentimentAnalysisResponse(BaseModel):
+    asset: str
+    sentiment_score: float
+    label: str
+    points: int
+
+
+class SentimentSeriesResponse(BaseModel):
+    asset: str
+    points: List[Dict[str, Any]]
+    trend: str
+    average_score: float
+
+
 # ─── Mentorship ────────────────────────────────────────────────────────────
 
 class MentorProfileIn(BaseModel):
