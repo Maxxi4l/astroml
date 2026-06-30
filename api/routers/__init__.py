@@ -26,6 +26,31 @@ from api.routers.reports import router as reports_router
 from api.routers.alerts import router as alerts_router
 from api.routers.sentiment import router as sentiment_router
 
+try:
+    from api.routers.compliance import router as compliance_router
+except Exception:  # noqa: BLE001
+    compliance_router = None
+
+try:
+    from api.routers.discussions import router as discussions_router
+except Exception:  # noqa: BLE001
+    discussions_router = None
+
+try:
+    from api.routers.voice import router as voice_router
+except Exception:  # noqa: BLE001
+    voice_router = None
+
+try:
+    from api.routers.llm_health import router as llm_health_router
+except Exception:  # noqa: BLE001
+    llm_health_router = None
+
+try:
+    from api.routers.query import router as query_router
+except Exception:  # noqa: BLE001
+    query_router = None
+
 __all__ = [
     "accounts_router",
     "audit_router",
@@ -53,4 +78,9 @@ __all__ = [
     "reports_router",
     "alerts_router",
     "sentiment_router",
+    "compliance_router",
+    "discussions_router",
+    "voice_router",
+    "llm_health_router",
+    "query_router",
 ]

@@ -23,8 +23,19 @@ import time
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-from fastapi import FastAPI, Request
+from importlib import import_module
+from typing import AsyncGenerator
+
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+
+try:
+    from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+except Exception:  # noqa: BLE001
+    CONTENT_TYPE_LATEST = "text/plain; version=0.0.4; charset=utf-8"
+
+    def generate_latest() -> bytes:
+        return b""
 
 from api.auth.middleware import AuthMiddleware
 from api.audit_middleware import AuditLoggingMiddleware
@@ -62,6 +73,36 @@ from api.routers import (
 )
 from api.routers.monitoring import record_latency
 from api.routers.ws import poll_and_broadcast_transactions
+
+
+def _optional_router(module_name: str, attr_name: str = "router"):
+    try:
+        module = import_module(module_name)
+    except Exception:  # noqa: BLE001
+        return None
+    return getattr(module, attr_name, None)
+
+
+compliance_router = _optional_router("api.routers.compliance")
+discussions_router = _optional_router("api.routers.discussions")
+llm_health_router = _optional_router("api.routers.llm_health")
+voice_router = _optional_router("api.routers.voice")
+query_router = _optional_router("api.routers.query")
+health_router = _optional_router("api.routers.health")
+admin_router = _optional_router("api.routers.admin")
+
+graphql_app = None
+try:
+    from strawberry.fastapi import GraphQLRouter
+    from api.graphql.context import get_graphql_context
+    from api.graphql.schema import schema
+except Exception:  # noqa: BLE001
+    GraphQLRouter = None
+    get_graphql_context = None
+    schema = None
+else:
+    if GraphQLRouter is not None and schema is not None:
+        graphql_app = GraphQLRouter(schema, context_getter=get_graphql_context)
 
 # Setup distributed tracing (issue #336)
 _tracer_provider = setup_tracing()
@@ -173,6 +214,23 @@ app.include_router(reports_router)
 app.include_router(alerts_router)
 app.include_router(sentiment_router)
 
+if compliance_router is not None:
+    app.include_router(compliance_router)
+if discussions_router is not None:
+    app.include_router(discussions_router)
+if voice_router is not None:
+    app.include_router(voice_router)
+if llm_health_router is not None:
+    app.include_router(llm_health_router)
+if health_router is not None:
+    app.include_router(health_router)
+if admin_router is not None:
+    app.include_router(admin_router)
+if graphql_app is not None:
+    app.include_router(graphql_app, prefix="/graphql")
+if query_router is not None:
+    app.include_router(query_router)
+
 
 @app.get("/health", tags=["ops"])
 async def health():
@@ -182,3 +240,16 @@ async def health():
 @app.get("/api/v1", tags=["ops"])
 async def api_root():
     return {"version": settings.api_version, "status": "ok"}
+
+
+@app.get("/metrics", tags=["ops"])
+async def metrics():
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+
+if os.environ.get("ENV", "development") == "development" and graphql_app is not None:
+    @app.get("/graphql/playground")
+    async def graphql_playground():
+        from strawberry.fastapi import GraphQLPlayground
+
+        return GraphQLPlayground()
